@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # pwa
 
 This template should help get you started developing with Vue 3 in Vite.
@@ -27,3 +28,6 @@ npm run dev
 ```sh
 npm run build
 ```
+=======
+# haras-app
+>>>>>>> aa3654bc03f74496ad1e678f78741e1b54923597
