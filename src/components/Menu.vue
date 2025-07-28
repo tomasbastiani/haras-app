@@ -13,10 +13,21 @@
         <h2 class="card-title">Listado Total Gastos Comunes</h2>
       </div>
 
+      <div class="card" @click="goToEditLote" v-if="isAdmin">
+        <img src="@/assets/img/lista-de-contactos.png" alt="Editar Usuario por Lote" class="card-image" />
+        <h2 class="card-title">Editar Usuarios por Lote</h2>
+      </div>
+
+      <div class="card" @click="goToProfile">
+        <img src="@/assets/img/profile.png" alt="Mi Perfil" class="card-image" />
+        <h2 class="card-title">Mi Perfil</h2>
+      </div>
+
       <div class="card" @click="goToContact">
         <img src="@/assets/img/contactos.png" alt="Contacto/Servicios" class="card-image" />
         <h2 class="card-title">Contacto/Servicios</h2>
       </div>
+
     </div>
   </div>
 </template>
@@ -42,6 +53,14 @@ const goToListadoGastos = () => {
 
 const goToContact = () => {
   router.push('/contact-services');
+};
+
+const goToProfile = () => {
+  router.push('/mi-perfil');
+};
+
+const goToEditLote = () => {
+  router.push('/edit-users');
 };
 </script>
 

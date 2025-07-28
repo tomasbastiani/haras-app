@@ -146,7 +146,7 @@ const sliderImages = [
   font-size: 2.5rem;
   color: #2c3e50;
   margin-bottom: 20px;
-  border-bottom: 3px solid #e74c3c;
+  border-bottom: 3px solid #ff8328;
   display: inline-block;
 }
 

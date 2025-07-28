@@ -57,23 +57,38 @@
 
     <!-- Modal de agregar gasto -->
     <div v-if="showModal" class="modal-overlay">
-        <div class="modal-content">
-            <h2>Agregar Gasto</h2>
+      <div class="modal-content">
+        <h2>Agregar Gasto</h2>
 
-            <label>Periodo:</label>
-            <input v-model="nuevoGasto.numero" type="text" />
+        <!-- Campos Ejemplo -->
+        <label>Ejemplo Carta:</label>
+        <input
+          type="text"
+          disabled
+          value="https://harassantamaria.com.ar/gcomunes/190/cartas/L-1.pdf"
+        />
 
-            <div class="modal-buttons">
-                <button type="submit" :disabled="isSaving" @click="guardarGasto">
-                    <span v-if="isSaving" class="spinner"></span>
-                    <span v-else>Guardar</span>
-                </button>
-                <button @click="closeModal">Cancelar</button>
-            </div>
+        <label>Ejemplo Liquidación:</label>
+        <input
+          type="text"
+          disabled
+          value="https://harassantamaria.com.ar/gcomunes/190/190%20Liquidacion%20de%20Gastos%20Comunes.pdf"
+        />
 
-            <div v-if="successMessage" class="success-message">{{ successMessage }}</div>
-            <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+        <label>Periodo:</label>
+        <input v-model="nuevoGasto.numero" type="text" />
+
+        <div class="modal-buttons">
+          <button type="submit" :disabled="isSaving" @click="guardarGasto">
+            <span v-if="isSaving" class="spinner"></span>
+            <span v-else>Guardar</span>
+          </button>
+          <button @click="closeModal">Cancelar</button>
         </div>
+
+        <div v-if="successMessage" class="success-message">{{ successMessage }}</div>
+        <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+      </div>
     </div>
 
     <div v-if="!isAdmin">
@@ -532,7 +547,7 @@ h1 {
   background: #fff;
   padding: 30px;
   border-radius: 12px;
-  width: 20%;
+  width: 60%;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
@@ -629,6 +644,17 @@ justify-content: center;
 .error-message {
   color: red;
   margin-top: 10px;
+}
+
+input[disabled] {
+  background-color: #f0f0f0;
+  color: #555;
+  border: 1px solid #ccc;
+  font-style: italic;
+}
+
+.modal-content h2{
+  margin-bottom: 20px;
 }
 
 @media (max-width: 768px) {

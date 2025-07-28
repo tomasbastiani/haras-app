@@ -8,18 +8,18 @@
       <span>Usuario: {{ userEmail }}</span>
     </div>
     
-    <div style="text-align: center; margin-bottom: 30px;" v-if="isAdmin">
+    <!-- <div style="text-align: center; margin-bottom: 30px;" v-if="isAdmin">
       <h2>Cambiar Contraseña</h2>
-    </div>
+    </div> -->
 
-    <div class="tabs-wrapper" v-if="!isAdmin">
+    <div class="tabs-wrapper">
       <v-tabs v-model="tab" background-color="#3f51b5" dark centered>
         <v-tab value="lotes">Mis Lotes</v-tab>
         <v-tab value="contrasenia">Cambiar Contraseña</v-tab>
       </v-tabs>
     </div>
 
-    <div class="change-password-container" v-if="isAdmin">
+    <!-- <div class="change-password-container" v-if="isAdmin">
         <form @submit.prevent="handleChangePassword" class="form">
             <div class="form-group">
                 <label for="currentPassword">Contraseña actual</label>
@@ -46,9 +46,9 @@
                 </button>
             </div>
         </form>
-    </div>
+    </div> -->
 
-    <v-window v-model="tab" class="tab-content" v-if="!isAdmin">
+    <v-window v-model="tab" class="tab-content">
       
       <v-window-item value="lotes">
         <div class="spinner-mounted-container" v-if="isLoadingLotes">

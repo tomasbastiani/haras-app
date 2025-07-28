@@ -20,6 +20,7 @@ html, body, #app {
   padding: 0;
   font-family: 'Oswald', sans-serif;
   background-color: #f4f4f4;
+  scroll-behavior: smooth;
 }
 
 #app {
@@ -31,7 +32,6 @@ html, body, #app {
 .main-content {
   background: url('@/assets/img/fondo.jpg') no-repeat center center fixed;
   background-size: cover;
-  
   flex: 1;
   padding: 0;
   display: flex;

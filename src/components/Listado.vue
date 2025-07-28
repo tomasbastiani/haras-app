@@ -42,7 +42,7 @@
             </div>
 
             <div class="filter-item button-item">
-            <button class="clear-button" @click="limpiarFiltros">Limpiar filtros</button>
+              <button class="clear-button" @click="limpiarFiltros">Limpiar filtros</button>
             </div>
         </div>
     </div>
