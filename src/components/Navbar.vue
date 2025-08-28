@@ -55,7 +55,9 @@ onMounted(() => {
 const logout = () => {
   localStorage.removeItem('user');
   localStorage.removeItem('admin');
-  localStorage.removeItem('token');
+  localStorage.removeItem('token')
+  localStorage.removeItem('loginTime');
+  localStorage.removeItem('sessionDuration')
   userExists.value = false;
   window.location.reload();
   router.push('/login');

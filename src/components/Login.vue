@@ -48,14 +48,31 @@ const handleLogin = async () => {
     });
 
     const userEmail = response.data.user.email;
-    localStorage.setItem('user', userEmail);
 
+    // ⬇ Guardamos usuario y tiempo de login
+    const now = new Date().getTime();
+    const sessionDuration = 30 * 60 * 1000; // 30 minutos
+    localStorage.setItem('user', userEmail);
+    localStorage.setItem('loginTime', now);
+    localStorage.setItem('sessionDuration', sessionDuration);
+
+    // ⬇ Guardamos admin si corresponde
     if (userEmail === 'admin@hsm.com') {
       localStorage.setItem('admin', userEmail);
     } else {
       localStorage.removeItem('admin');
     }
 
+    // ⬇ Configuramos auto-logout
+    setTimeout(() => {
+      localStorage.removeItem('user');
+      localStorage.removeItem('admin');
+      localStorage.removeItem('loginTime');
+      localStorage.removeItem('sessionDuration');
+      router.push('/login'); // redirigir al login
+    }, sessionDuration);
+
+    // ⬇ Redirigir al menú
     router.push('/menu').then(() => {
       window.location.reload();
     });
