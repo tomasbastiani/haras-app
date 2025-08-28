@@ -8,6 +8,7 @@ import Listado from '@/components/Listado.vue';
 import Profile from '@/components/Profile.vue';
 import Contact from '@/components/Contact.vue';
 import EditUser from '@/components/EditUser.vue';
+import Files from '@/components/Files.vue';
 
 const routes = [
   { path: '/', component: Home },
@@ -18,7 +19,8 @@ const routes = [
   { path: '/listado-gastos', component: Listado, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/mi-perfil', component: Profile, meta: { requiresAuth: true } },
   { path: '/contact-services', component: Contact, meta: { requiresAuth: true } },
-  { path: '/edit-users', component: EditUser, meta: { requiresAuth: true, requiresAdmin: true } }
+  { path: '/edit-users', component: EditUser, meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: '/files', component: Files, meta: { requiresAuth: true } },
 ];
 
 const router = createRouter({

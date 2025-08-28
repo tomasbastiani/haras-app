@@ -7,10 +7,6 @@
     <div style="text-align: center; margin-bottom: 30px;">
       <span>Usuario: {{ userEmail }}</span>
     </div>
-    
-    <!-- <div style="text-align: center; margin-bottom: 30px;" v-if="isAdmin">
-      <h2>Cambiar Contraseña</h2>
-    </div> -->
 
     <div class="tabs-wrapper">
       <v-tabs v-model="tab" background-color="#3f51b5" dark centered>
@@ -52,9 +48,26 @@
       
       <v-window-item value="lotes">
         <div class="spinner-mounted-container" v-if="isLoadingLotes">
-            <span class="spinner-mounted"></span>
+          <span class="spinner-mounted"></span>
         </div>
         <div v-else class="mis-lotes-table-wrapper">
+
+          <!-- Filtros solo visible si es admin -->
+          <div v-if="isAdmin" class="lotes-filters">
+            <input
+              type="text"
+              v-model="searchEmail"
+              placeholder="Buscar por email"
+              class="filter-input"
+            />
+            <input
+              type="text"
+              v-model="searchLote"
+              placeholder="Buscar por lote"
+              class="filter-input"
+            />
+          </div>
+
           <table class="facturas-table">
             <thead>
               <tr>
@@ -64,15 +77,39 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(lote, index) in lotes" :key="index">
+              <tr v-for="(lote, index) in paginatedLotes" :key="index">
                 <td>{{ lote.email }}</td>
                 <td>{{ lote.nlote }}</td>
                 <td class="editar-col">
-                  <img :src="editIcon" alt="" @click="editarFactura(lote)" style="width: 20px; cursor: pointer;" />
+                  <img
+                    :src="editIcon"
+                    alt=""
+                    @click="editarFactura(lote)"
+                    style="width: 20px; cursor: pointer;"
+                  />
                 </td>
               </tr>
             </tbody>
           </table>
+
+          <!-- Paginador -->
+          <div v-if="isAdmin" class="pagination">
+            <button
+              @click="currentPage--"
+              :disabled="currentPage === 1"
+              class="page-btn"
+            >
+              Anterior
+            </button>
+            <span class="page-info">Página {{ currentPage }} de {{ totalPages }}</span>
+            <button
+              @click="currentPage++"
+              :disabled="currentPage === totalPages"
+              class="page-btn"
+            >
+              Siguiente
+            </button>
+          </div>
         </div>
       </v-window-item>
 
@@ -176,7 +213,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/axios';
 import editIcon from '@/assets/img/editar.png';
@@ -201,6 +238,29 @@ const mensajeExito = ref('')
 const mensajeError = ref('')
 const mostrarRegistro = ref(false)
 const nuevoUsuario = ref({ email: '', password: '' })
+
+const searchEmail = ref('')
+const searchLote = ref('')
+const currentPage = ref(1)
+const itemsPerPage = 10
+
+
+const filteredLotes = computed(() => {
+  return lotes.value.filter(lote => {
+    const matchEmail = lote.email.toLowerCase().includes(searchEmail.value.toLowerCase())
+    const matchLote = lote.nlote.toLowerCase().includes(searchLote.value.toLowerCase())
+    return matchEmail && matchLote
+  })
+})
+
+// Paginación
+const totalPages = computed(() => Math.ceil(filteredLotes.value.length / itemsPerPage))
+
+const paginatedLotes = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  return filteredLotes.value.slice(start, start + itemsPerPage)
+})
+
 
 const fetchLotes = async () => {
   try {
@@ -528,6 +588,60 @@ input {
 
 h3{
   margin-bottom: 10px;
+}
+
+.lotes-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.filter-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 4px rgba(25, 118, 210, 0.4);
+}
+
+/* Estilos del paginador */
+.pagination {
+  margin-top: 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-btn {
+  padding: 6px 14px;
+  background-color: #ffd100;
+  color: black;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s ease;
+}
+
+.page-btn:hover:not(:disabled) {
+  background-color: #125a9c;
+}
+
+.page-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 14px;
+  color: #333;
 }
 
 @media (max-width: 768px) {

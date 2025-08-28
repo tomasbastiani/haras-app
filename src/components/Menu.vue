@@ -28,6 +28,11 @@
         <h2 class="card-title">Contacto/Servicios</h2>
       </div>
 
+      <div class="card" @click="goToFiles">
+        <img src="@/assets/img/subir-flecha-arriba.png" alt="Adjuntar Archivos" class="card-image" />
+        <h2 class="card-title">Adjuntar Archivos</h2>
+      </div>
+
     </div>
   </div>
 </template>
@@ -61,6 +66,10 @@ const goToProfile = () => {
 
 const goToEditLote = () => {
   router.push('/edit-users');
+};
+
+const goToFiles = () => {
+  router.push('/files');
 };
 </script>
 

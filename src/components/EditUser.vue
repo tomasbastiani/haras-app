@@ -93,6 +93,9 @@
 import { ref, onMounted, computed } from 'vue';
 import axios from '@/axios';
 import editIcon from '@/assets/img/editar.png';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 
 const lotes = ref([]);
 const currentPage = ref(1);
@@ -127,6 +130,10 @@ const fetchLotes = async () => {
   } catch (err) {
     console.error('Error al cargar lotes:', err);
   }
+};
+
+const goBack = () => {
+  router.push('/menu');
 };
 
 onMounted(fetchLotes);

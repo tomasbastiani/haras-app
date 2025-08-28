@@ -118,10 +118,21 @@ const enviarEmail = async () => {
   mensajeError.value = ''
 
   try {
+    // Traemos el usuario del localStorage
+    const usuario = localStorage.getItem('user') || 'Usuario desconocido'
+
+    // Armamos el cuerpo del mail agregando el usuario
+    const cuerpoMensaje = `
+      Usuario: ${usuario}
+      
+      Mensaje:
+      ${mensaje.value}
+    `
+
     const res = await axios.post('/enviar-contacto', {
       to: emailDestino.value,
       subject: subject.value,
-      message: mensaje.value
+      message: cuerpoMensaje
     })
 
     mensajeExito.value = res.data.message || 'Email enviado correctamente'
@@ -135,7 +146,8 @@ const enviarEmail = async () => {
   } finally {
     isSending.value = false
   }
-};
+}
+
 
 // const contactos = [
 //   { titulo: 'Intendencia', mail: 'servicios@harassantamaria.com.ar', tel: '0348-4494369' },
