@@ -117,7 +117,7 @@
       <template>
         <v-dialog v-model="showEditModal" max-width="500px">
           <v-card>
-            <v-card-title class="text-h6">Editar Factura</v-card-title>
+            <v-card-title class="text-h6">Editar Usuario</v-card-title>
             <v-card-text>
               <v-form>
                 <v-text-field
@@ -136,6 +136,12 @@
 
                 <div v-if="mostrarRegistro">
                   <h3>⚠️ Debe registrar el email</h3>
+                  <v-text-field
+                    v-model="nuevoUsuario.nombre"
+                    label="Nombre"
+                    outlined
+                    dense
+                  ></v-text-field>
                   <v-text-field
                     v-model="nuevoUsuario.email"
                     label="Email"
@@ -237,7 +243,7 @@ const isSaving = ref(false)
 const mensajeExito = ref('')
 const mensajeError = ref('')
 const mostrarRegistro = ref(false)
-const nuevoUsuario = ref({ email: '', password: '' })
+const nuevoUsuario = ref({ nombre: '', email: '', password: '' })
 
 const searchEmail = ref('')
 const searchLote = ref('')
@@ -378,6 +384,7 @@ const registrarNuevoUsuario = async () => {
 
   try {
     await axios.post('/create-user', {
+      nombre: nuevoUsuario.value.nombre,
       email: nuevoUsuario.value.email,
       password: nuevoUsuario.value.password
     })
@@ -395,7 +402,8 @@ const registrarNuevoUsuario = async () => {
       mensajeError.value = 'Ocurrió un error al registrar el usuario.'
     }
   } finally {
-    isSaving.value = false
+    isSaving.value = false;
+    window.location.reload();
   }
 }
 

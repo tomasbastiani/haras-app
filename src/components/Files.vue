@@ -38,7 +38,11 @@
       <p v-if="errorMessage" class="error-msg">{{ errorMessage }}</p>
 
       <!-- Botón con spinner -->
-      <button class="btn-create" @click="crearArchivo" :disabled="loading">
+      <button
+        class="btn-create"
+        @click="crearArchivo"
+        :disabled="loading || !nuevoArchivo.nlote || !nuevoArchivo.ncarta"
+      >
         <span v-if="loading" class="loader"></span>
         {{ loading ? "Subiendo..." : "Crear" }}
       </button>
@@ -124,8 +128,15 @@ const crearArchivo = async () => {
   successMessage.value = "";
   errorMessage.value = "";
 
+  // Validar lote y carta
+  if (!nuevoArchivo.value.nlote || !nuevoArchivo.value.ncarta) {
+    errorMessage.value = "Debes seleccionar un lote y una carta.";
+    setTimeout(() => (errorMessage.value = ""), 3000);
+    return;
+  }
+
   if (!nuevoArchivo.value.file) {
-    errorMessage.value = "Debes seleccionar un archivo";
+    errorMessage.value = "Debes seleccionar un archivo.";
     setTimeout(() => (errorMessage.value = ""), 3000);
     return;
   }
@@ -155,10 +166,11 @@ const crearArchivo = async () => {
       file: null,
     };
 
-    fetchArchivos(); // refrescar lista después de crear
+    fetchArchivos();
   } catch (error) {
-    console.error(error.response.data.message);
-    errorMessage.value = '❌' + error.response.data.message || "❌ Error al subir archivo";
+    console.error(error?.response?.data?.message || error);
+    errorMessage.value =
+      "❌ " + (error?.response?.data?.message || "Error al subir archivo");
     setTimeout(() => (errorMessage.value = ""), 3000);
   } finally {
     loading.value = false;

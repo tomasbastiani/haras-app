@@ -110,12 +110,14 @@
         <!-- Campos Ejemplo -->
         <label>Ejemplo Carta:</label>
         <input
+          disabled
           type="text"
           value="https://harassantamaria.com.ar/gcomunes/190/cartas/L-1.pdf"
         />
 
         <label>Ejemplo Liquidación:</label>
         <input
+          disabled
           type="text"
           value="https://harassantamaria.com.ar/gcomunes/190/190%20Liquidacion%20de%20Gastos%20Comunes.pdf"
         />

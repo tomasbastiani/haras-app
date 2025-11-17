@@ -64,6 +64,7 @@
 
             <div v-if="mostrarRegistro">
               <h3>⚠️ Debe registrar el email</h3>
+              <v-text-field v-model="nuevoUsuario.nombre" label="Nombre" outlined dense />
               <v-text-field v-model="nuevoUsuario.email" label="Email" outlined dense disabled />
               <v-text-field v-model="nuevoUsuario.password" label="Contraseña" type="password" outlined dense />
               <v-btn :disabled="isSaving" color="primary" @click="registrarNuevoUsuario" style="margin-bottom: 10px;">
@@ -102,7 +103,7 @@ const currentPage = ref(1);
 const itemsPerPage = 10;
 
 const facturaEditando = ref({});
-const nuevoUsuario = ref({ email: '', password: '' });
+const nuevoUsuario = ref({ nombre: '', email: '', password: '' });
 const showEditModal = ref(false);
 const mostrarRegistro = ref(false);
 const mensajeExito = ref('');
@@ -193,6 +194,7 @@ const registrarNuevoUsuario = async () => {
     }
   } finally {
     isSaving.value = false;
+    window.location.reload();
   }
 };
 
