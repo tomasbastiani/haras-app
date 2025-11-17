@@ -46,8 +46,10 @@ const handleLogin = async () => {
       email: email.value,
       password: password.value,
     });
+    console.log('response', response)
 
     const userEmail = response.data.user.email;
+    const admin = response.data.user.admin;
 
     // ⬇ Guardamos usuario y tiempo de login
     const now = new Date().getTime();
@@ -57,8 +59,8 @@ const handleLogin = async () => {
     localStorage.setItem('sessionDuration', sessionDuration);
 
     // ⬇ Guardamos admin si corresponde
-    if (userEmail === 'admin@hsm.com') {
-      localStorage.setItem('admin', userEmail);
+    if (admin === 1) {
+      localStorage.setItem('admin', admin);
     } else {
       localStorage.removeItem('admin');
     }

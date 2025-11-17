@@ -3,11 +3,16 @@
 
     <div class="header">
       <span class="back-arrow" @click="goBack">←</span>
-      <h1>Adjuntar Archivos</h1>
+      <!-- Título distinto opcional -->
+      <h1 v-if="!isAdmin">Adjuntar Archivos</h1>
+      <h1 v-else>Archivos</h1>
     </div>
 
-    <!-- Recuadro de creación -->
-    <div class="upload-box">
+    <!-- Recuadro de creación SOLO para no-admin -->
+    <div
+      class="upload-box"
+      v-if="!isAdmin"
+    >
       <h2 class="upload-title">📎 Adjuntar Archivos</h2>
       <input type="file" @change="handleFileUpload" />
 
@@ -39,51 +44,50 @@
       </button>
     </div>
 
-    <!-- Tabla de archivos -->
-<div class="table-wrapper">
-  <table class="custom-table">
-    <thead>
-      <tr>
-        <th>Lote</th>
-        <th>Carta Nº</th>
-        <th>Usuario</th>
-        <th>Comentarios</th>
-        <th>Archivo</th>
-        <th>Eliminar</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr v-for="archivo in archivos" :key="archivo.id">
-        <td>{{ archivo.nlote }}</td>
-        <td>{{ archivo.ncarta }}</td>
-        <td>{{ archivo.user }}</td>
-        <td>{{ archivo.comments }}</td>
-        <td>
-          <button class="btn btn-download" @click="descargarArchivo(archivo)">
-            <i class="fas fa-download"></i> Descargar
-          </button>
-        </td>
-        <td class="acciones">
-          <button class="btn btn-delete" @click="abrirModal(archivo.id)">
-            <i class="fas fa-trash-alt"></i>
-          </button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+    <!-- Tabla de archivos (la ven todos; el admin ve solo esto) -->
+    <div class="table-wrapper">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Lote</th>
+            <th>Carta Nº</th>
+            <th>Usuario</th>
+            <th>Comentarios</th>
+            <th>Archivo</th>
+            <th>Eliminar</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="archivo in archivos" :key="archivo.id">
+            <td>{{ archivo.nlote }}</td>
+            <td>{{ archivo.ncarta }}</td>
+            <td>{{ archivo.user }}</td>
+            <td>{{ archivo.comments }}</td>
+            <td>
+              <button class="btn btn-download" @click="descargarArchivo(archivo)">
+                <i class="fas fa-download"></i> Descargar
+              </button>
+            </td>
+            <td class="acciones">
+              <button class="btn btn-delete" @click="abrirModal(archivo.id)">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-  <!-- Modal de confirmación -->
-  <div v-if="showModal" class="modal-overlay">
-    <div class="modal">
-      <p>¿Está seguro de que quiere eliminar este archivo?</p>
-      <div class="modal-buttons">
-        <button class="btn btn-confirm" @click="eliminarArchivo()">Sí</button>
-        <button class="btn btn-cancel" @click="cerrarModal">No</button>
+      <!-- Modal de confirmación -->
+      <div v-if="showModal" class="modal-overlay">
+        <div class="modal">
+          <p>¿Está seguro de que quiere eliminar este archivo?</p>
+          <div class="modal-buttons">
+            <button class="btn btn-confirm" @click="eliminarArchivo()">Sí</button>
+            <button class="btn btn-cancel" @click="cerrarModal">No</button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
-
 
   </div>
 </template>
@@ -100,6 +104,7 @@ const cartas = ref([])
 const successMessage = ref("")
 const errorMessage = ref("")
 const loading = ref(false)
+const isAdmin = ref(false);
 
 const nuevoArchivo = ref({
   nlote: "",
@@ -259,14 +264,23 @@ const fetchCartas = async () => {
 
 const fetchArchivos = async () => {
   try {
-    const { data } = await axios.get(`/archivos/user/${nuevoArchivo.value.user}`)
+    const { data } = await axios.get(
+      `/archivos/user/${nuevoArchivo.value.user}`,
+      {
+        params: {
+          is_admin: isAdmin.value ? 1 : 0, // o true/false, Laravel lo castea
+        },
+      }
+    )
     archivos.value = data
   } catch (err) {
     console.error("Error al cargar archivos", err)
   }
 }
 
+
 onMounted(() => {
+  isAdmin.value = !!localStorage.getItem('admin');
   fetchArchivos()
   fetchLotes()
   fetchCartas()

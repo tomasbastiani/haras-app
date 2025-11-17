@@ -6,53 +6,100 @@
     </div>
 
     <div class="spinner-mounted-container" v-if="isLoading">
-        <span class="spinner-mounted"></span>
+      <span class="spinner-mounted"></span>
     </div>
 
+    <!-- BLOQUE ADMIN -->
     <div v-if="isAdmin">
-        <div class="admin-actions">
-            <button @click="openModal">
-                <img :src="plusIcon" alt="Plus" />
-                Agregar Gasto
-            </button>
+      <div class="admin-actions">
+        <button @click="openModal">
+          <img :src="plusIcon" alt="Plus" />
+          Agregar Gasto
+        </button>
+
+        <!-- Nuevo botón solo para admin -->
+        <button @click="openMailConfirmModal">
+          📧 Enviar aviso por mail
+        </button>
+      </div>
+
+      <table class="facturas-table-admin">
+        <thead>
+          <tr>
+            <th>Periodo</th>
+            <th>Eliminar</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(periodo, index) in periodos" :key="index">
+            <td>{{ periodo.numero }}</td>
+            <td>
+              <button @click="eliminarPeriodo(periodo.numero)" class="error-message">
+                Eliminar
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- FIN BLOQUE ADMIN -->
+
+    <!-- Modal de confirmación de envío de aviso por mail -->
+    <div v-if="showMailConfirmModal" class="modal-overlay">
+      <div class="modal-content small-modal">
+        <h3>Confirmar envío de aviso</h3>
+        <p>¿Está seguro de que quiere enviar el aviso por mail a todos los usuarios?</p>
+
+        <div class="modal-buttons">
+          <button
+            :disabled="isSendingMail"
+            @click="confirmarEnvioMail"
+            class="confirm-button"
+          >
+            <span v-if="isSendingMail" class="spinner"></span>
+            <span v-else>Sí, enviar</span>
+          </button>
+
+          <button
+            @click="cancelarEnvioMail"
+            class="cancel-button"
+            :disabled="isSendingMail"
+          >
+            No
+          </button>
         </div>
 
-        <table class="facturas-table-admin">
-            <thead>
-                <tr>
-                <th>Periodo</th>
-                <th>Eliminar</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-for="(periodo, index) in periodos" :key="index">
-                <td>{{ periodo.numero }}</td>
-                <td>
-                    <button @click="eliminarPeriodo(periodo.numero)" class="error-message">
-                        Eliminar
-                    </button>
-                </td>
-                </tr>
-            </tbody>
-        </table>
+        <!-- Texto mientras se envían los mails -->
+        <p v-if="isSendingMail" class="info-message">
+          Se están enviando los avisos por mail. Esto puede demorar unos segundos...
+        </p>
+
+        <div v-if="mailSuccessMessage" class="success-message">
+          {{ mailSuccessMessage }}
+        </div>
+        <div v-if="mailErrorMessage" class="error-message">
+          {{ mailErrorMessage }}
+        </div>
+      </div>
     </div>
-    
+
+
     <!-- Modal de confirmación -->
     <div v-if="showConfirmModal" class="modal-overlay">
-        <div class="modal-content small-modal">
-            <h3>Confirmar eliminación</h3>
-            <p>¿Está seguro que desea eliminar el periodo {{ periodoAEliminar }}?</p>
+      <div class="modal-content small-modal">
+        <h3>Confirmar eliminación</h3>
+        <p>¿Está seguro que desea eliminar el periodo {{ periodoAEliminar }}?</p>
 
-            <div class="modal-buttons">
-                <button :disabled="isSaving" @click="confirmarEliminacion" class="confirm-button">
-                    <span v-if="isSaving" class="spinner"></span>
-                    <span v-else>Confirmar</span>
-                </button>
-                <button @click="cancelarEliminacion" class="cancel-button">Cancelar</button>
-            </div>
-            <div v-if="successMessage" class="success-message">{{ successMessage }}</div>
-            <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+        <div class="modal-buttons">
+          <button :disabled="isSaving" @click="confirmarEliminacion" class="confirm-button">
+            <span v-if="isSaving" class="spinner"></span>
+            <span v-else>Confirmar</span>
+          </button>
+          <button @click="cancelarEliminacion" class="cancel-button">Cancelar</button>
         </div>
+        <div v-if="successMessage" class="success-message">{{ successMessage }}</div>
+        <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+      </div>
     </div>
 
     <!-- Modal de agregar gasto -->
@@ -64,14 +111,12 @@
         <label>Ejemplo Carta:</label>
         <input
           type="text"
-          disabled
           value="https://harassantamaria.com.ar/gcomunes/190/cartas/L-1.pdf"
         />
 
         <label>Ejemplo Liquidación:</label>
         <input
           type="text"
-          disabled
           value="https://harassantamaria.com.ar/gcomunes/190/190%20Liquidacion%20de%20Gastos%20Comunes.pdf"
         />
 
@@ -91,6 +136,7 @@
       </div>
     </div>
 
+    <!-- BLOQUE NO ADMIN (usuarios comunes) -->
     <div v-if="!isAdmin">
       <div v-if="facturas.length === 0" class="no-data">
         No se encontraron facturas.
@@ -222,6 +268,51 @@ const prevPage = () => {
 watch([selectedPeriodo, selectedLote], () => {
   currentPage.value = 1;
 });
+
+
+const showMailConfirmModal = ref(false)
+const isSendingMail = ref(false)
+const mailSuccessMessage = ref('')
+const mailErrorMessage = ref('')
+
+const openMailConfirmModal = () => {
+  mailSuccessMessage.value = ''
+  mailErrorMessage.value = ''
+  showMailConfirmModal.value = true
+}
+
+// cerrar modal sin hacer nada
+const cancelarEnvioMail = () => {
+  showMailConfirmModal.value = false
+}
+
+// confirmar y llamar al backend
+const confirmarEnvioMail = async () => {
+  try {
+    isSendingMail.value = true
+    mailSuccessMessage.value = ''
+    mailErrorMessage.value = ''
+
+    await axios.post('/gastos/notificar', {
+      is_admin: isAdmin.value,
+      // periodo: selectedPeriodoAdmin.value ?? null
+    })
+
+    mailSuccessMessage.value = 'Los avisos fueron enviados por mail correctamente.'
+
+    // Opcional: pequeño delay para que el usuario llegue a ver el mensaje
+    // y luego cerrar el modal. Si no querés delay, podés cerrar directo.
+    setTimeout(() => {
+      showMailConfirmModal.value = false
+      mailSuccessMessage.value = ''
+    }, 800)
+  } catch (error) {
+    console.error(error)
+    mailErrorMessage.value = 'Hubo un error al enviar los avisos. Por favor, intente nuevamente.'
+  } finally {
+    isSendingMail.value = false
+  }
+}
 
 // const fetchAdminFacturas = async () => {
 //   try {
@@ -502,9 +593,9 @@ h1 {
 }
 
 .admin-actions {
-  text-align: center;
-  margin-top: 2rem;
-    margin-bottom: 2rem;
+  gap: 10px;
+  display: flex;
+  justify-content: center;
 }
 
 .admin-actions button {

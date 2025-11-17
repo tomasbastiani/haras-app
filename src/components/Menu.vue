@@ -28,9 +28,14 @@
         <h2 class="card-title">Contacto/Servicios</h2>
       </div>
 
-      <div class="card" @click="goToFiles">
+      <div class="card" @click="goToFiles" v-if="!isAdmin">
         <img src="@/assets/img/subir-flecha-arriba.png" alt="Adjuntar Archivos" class="card-image" />
         <h2 class="card-title">Adjuntar Archivos</h2>
+      </div>
+
+      <div class="card" @click="goToViewFiles" v-if="isAdmin">
+        <img src="@/assets/img/subir-flecha-arriba.png" alt="Adjuntar Archivos" class="card-image" />
+        <h2 class="card-title">Ver Archivos</h2>
       </div>
 
     </div>
@@ -71,6 +76,11 @@ const goToEditLote = () => {
 const goToFiles = () => {
   router.push('/files');
 };
+
+const goToViewFiles = () => {
+  router.push('/files');
+};
+
 </script>
 
 <style scoped>
