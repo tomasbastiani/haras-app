@@ -190,4 +190,25 @@ justify-content: center;
   }
   
 }
+
+@media (max-width: 480px) {
+  .logo{
+    width: 100%;
+  }
+
+  .logo img{
+    width: 85%;
+  }
+
+  .nav-links {
+    font-size: 15px;
+    flex-direction: row;      /* 👈 lado a lado */
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;          /* por si no entran, que salten a la fila de abajo */
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+}
 </style>

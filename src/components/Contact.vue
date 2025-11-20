@@ -264,4 +264,21 @@ const servicios = [
   font-weight: bold;
 }
 
+
+@media (max-width: 480px) {
+
+  .contact-card{
+    color: #111 !important;             /* color del texto */
+    background-color: #ffffff;          /* fondo blanco */
+    caret-color: #111;
+  }
+  
+  span{
+    color: #111 !important;             /* color del texto */
+    background-color: #ffffff;          /* fondo blanco */
+    caret-color: #111;  
+  }
+
+}
+
 </style>

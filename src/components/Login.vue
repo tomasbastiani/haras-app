@@ -191,4 +191,27 @@ h1 {
       width: 90%;
   }
 }
+
+
+@media (max-width: 480px) {
+  
+  h1{
+    font-size: 1.3rem;
+  }
+
+  .login-form{
+    padding: 0.4rem;
+    font-size: 0.8rem;
+  }
+
+  .login-form button{
+    width: 70%;
+  }
+
+
+}
+
+
+
+
 </style>

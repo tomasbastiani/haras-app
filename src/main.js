@@ -11,6 +11,20 @@ import '@mdi/font/css/materialdesignicons.css' // Iconos opcionales (usados por 
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 
+//SW
+import { registerSW } from 'virtual:pwa-register'
+
+registerSW({
+  immediate: true,
+  onRegistered(r) {
+    // opcional: logs
+    // console.log('Service Worker registrado', r)
+  },
+  onRegisterError(error) {
+    console.error('Error al registrar el Service Worker', error)
+  }
+})
+
 // 👉 Crear instancia de Vuetify
 const vuetify = createVuetify({
   components,

@@ -762,4 +762,37 @@ input[disabled] {
   }
 }
 
+@media (max-width: 480px) {
+
+  h1{
+    font-size: 25px;
+  }
+  
+  .modal-content {
+    color: #111 !important;             /* color del texto */
+    background-color: #ffffff;          /* fondo blanco */
+    caret-color: #111;                  /* color del cursor */
+  }
+
+  .admin-actions{
+    display: block;
+  }
+
+  .admin-actions button{
+    width: 90%;
+    margin-bottom: 10px;
+    font-size: 15px;
+  }
+
+  .admin-actions img{
+    width: 15px;
+    height: 15px;
+  }
+
+  .filters select{
+    margin-left: auto;
+  }
+
+}
+
 </style>

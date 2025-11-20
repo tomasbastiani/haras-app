@@ -63,4 +63,45 @@ html, body, #app {
   flex-direction: column;
 }
 
+@media (max-width: 480px) {
+  /* Asegurar que el texto de los inputs se vea */
+  input,
+  textarea,
+  select,
+  td {
+    color: #111 !important;             /* color del texto */
+    background-color: #ffffff;          /* fondo blanco */
+    caret-color: #111;                  /* color del cursor */
+  }
+
+  /* Placeholder visible también */
+  input::placeholder,
+  textarea::placeholder {
+    color: #6b7280;                     /* gris visible */
+    opacity: 1;
+  }
+
+  /* Botón back visible */
+  .back-button {
+    background: transparent;
+    border: none;
+    color: #111;                        /* que no quede blanco sobre blanco */
+    font-size: 20px;
+  }
+  
+  .back-arrow {
+    background: transparent;
+    border: none;
+    color: #111;                        /* que no quede blanco sobre blanco */
+    font-size: 20px;
+  }
+  
+  .arrow {
+    background: transparent;
+    border: none;
+    color: #111;                        /* que no quede blanco sobre blanco */
+    font-size: 20px;
+  }
+}
+
 </style>

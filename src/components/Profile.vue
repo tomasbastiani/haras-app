@@ -4,7 +4,7 @@
       <span class="back-arrow" @click="goBack">←</span>
       <h1>Mi Perfil</h1>
     </div>
-    <div style="text-align: center; margin-bottom: 30px;">
+    <div style="text-align: center; margin-bottom: 30px;" class="user-text">
       <span>Usuario: {{ userEmail }}</span>
     </div>
 
@@ -674,6 +674,23 @@ h3{
   .submit-button {
     width: 100%;
   }
+}
+
+
+@media (max-width: 480px) {
+
+  .user-text{
+    color: #111 !important;             /* color del texto */
+    background-color: #ffffff;          /* fondo blanco */
+    caret-color: #111;  
+  }
+  
+  span{
+    color: #111 !important;             /* color del texto */
+    background-color: #ffffff;          /* fondo blanco */
+    caret-color: #111;  
+  }
+
 }
 
 </style>

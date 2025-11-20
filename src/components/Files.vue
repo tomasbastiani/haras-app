@@ -530,4 +530,12 @@ h1 {
   background: #4b5563;
 }
 
+
+@media (max-width: 480px) {
+
+  h1{
+    font-size: 20px;
+  }
+
+}
 </style>

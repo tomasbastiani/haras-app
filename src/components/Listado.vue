@@ -492,4 +492,26 @@ justify-content: center;
 
 }
 
+@media (max-width: 480px) {
+
+  .header h2{
+    font-size: 15px;
+  }
+
+  .clear-button{
+    width: 100%;
+    font-size: 14px;
+  }
+
+  .modal-content{
+    width: 95%;
+  }
+
+  .modal-buttons{
+    justify-content: center;
+    gap: 10%;
+  }
+
+}
+
 </style>

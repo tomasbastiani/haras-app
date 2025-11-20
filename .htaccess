@@ -1,0 +1,18 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /test/
+
+    # --- BACKEND LARAVEL ---
+
+    # Todo lo que vaya a /test/api/... se manda a Laravel (public/index.php)
+    # pero manteniendo /api/... en el PATH_INFO para que api.php matchee
+    RewriteCond %{REQUEST_URI} ^/test/api
+    RewriteRule ^api/(.*)$ api/public/index.php?/api/$1 [L,QSA]
+
+    # --- FRONTEND VUE (SPA) ---
+
+    RewriteCond %{REQUEST_URI} !^/test/api/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule . index.html [L]
+</IfModule>
