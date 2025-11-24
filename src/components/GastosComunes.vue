@@ -112,14 +112,14 @@
         <input
           disabled
           type="text"
-          value="https://harassantamaria.com.ar/gcomunes/190/cartas/L-1.pdf"
+          value="https://harassantamaria.com.ar/gcomunes/190/Cartas/L-1.pdf"
         />
 
         <label>Ejemplo Liquidación:</label>
         <input
           disabled
           type="text"
-          value="https://harassantamaria.com.ar/gcomunes/190/190%20Liquidacion%20de%20Gastos%20Comunes.pdf"
+          value="https://harassantamaria.com.ar/gcomunes/190/LiqGastosComunes190.pdf"
         />
 
         <label>Periodo:</label>
@@ -162,6 +162,14 @@
         </label>
       </div>
 
+      <div v-if="isPdfLoading" class="pdf-loading-msg">
+        Descargando documento, por favor espere...
+      </div>
+
+      <div v-if="pdfErrorMessage" class="error-message">
+        {{ pdfErrorMessage }}
+      </div>
+
       <table class="facturas-table">
         <thead>
           <tr>
@@ -180,8 +188,22 @@
             <td>{{ factura.numero }}</td>
             <td>{{ factura.email }}</td>
             <td>{{ factura.nlote }}</td>
-            <td><button @click="openPDF(factura.carta)">Ver Carta</button></td>
-            <td><button @click="openPDF(factura.gastocomun)">Ver Liquidación</button></td>
+            <td>
+              <button
+                @click="openPDF(factura, 'carta')"
+                :disabled="isPdfLoading"
+              >
+                <span>Ver Carta</span>
+              </button>
+            </td>
+            <td>
+              <button
+                @click="openPDF(factura, 'liquidacion')"
+                :disabled="isPdfLoading"
+              >
+                <span>Ver Liquidación</span>
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -224,11 +246,94 @@ const errorMessage = ref('');
 const periodos = ref([]);
 const showConfirmModal = ref(false);
 const periodoAEliminar = ref(null);
-
+const isPdfLoading = ref(false);
+const pdfErrorMessage = ref('');
 
 const goBack = () => router.push('/menu');
 
-const openPDF = (url) => window.open(url.trim(), '_blank');
+// const openPDF = async (factura, tipo) => {
+//   try {
+//     const email = localStorage.getItem('user');
+
+//     if (!email) {
+//       alert('No se encontró el email del usuario. Iniciá sesión de nuevo.');
+//       return;
+//     }
+
+//     const response = await axios.get(
+//       `/gastos/pdf/${factura.numero}/${factura.nlote}`,
+//       {
+//         params: { email, tipo },
+//         responseType: 'blob', // 👈 importante: queremos el PDF como binario
+//       }
+//     );
+
+//     const blob = new Blob([response.data], { type: 'application/pdf' });
+//     const url = window.URL.createObjectURL(blob);
+//     window.open(url, '_blank');
+//   } catch (error) {
+//     console.error('Error al abrir PDF', error);
+//   }
+// };
+
+
+const openPDF = async (factura, tipo) => {
+  try {
+    const email = localStorage.getItem('user');
+
+    if (!email) {
+      alert('No se encontró el email del usuario. Iniciá sesión de nuevo.');
+      return;
+    }
+
+    isPdfLoading.value = true;
+    pdfErrorMessage.value = '';
+
+    const response = await axios.get(
+      `/gastos/pdf/${factura.numero}/${factura.nlote}`,
+      {
+        params: { email, tipo },
+        responseType: 'blob',
+      }
+    );
+
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+
+    const filename =
+      tipo === 'carta'
+        ? `carta-${factura.numero}-lote-${factura.nlote}.pdf`
+        : `liquidacion-${factura.numero}-lote-${factura.nlote}.pdf`;
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Error al descargar PDF', error);
+
+    const status = error?.response?.status;
+
+    if (status === 404) {
+      pdfErrorMessage.value = 'No se encontró el documento para este período/lote.';
+    } else if (status === 401 || status === 403) {
+      pdfErrorMessage.value = 'No tiene permisos para descargar este documento.';
+    } else {
+      pdfErrorMessage.value = 'Ocurrió un error al descargar el documento.';
+    }
+
+    // 👇 limpiar el mensaje luego de 3 segundos
+    setTimeout(() => {
+      pdfErrorMessage.value = '';
+    }, 3000);
+  } finally {
+    isPdfLoading.value = false;
+  }
+};
+
 
 const fetchFacturas = async () => {
   const email = localStorage.getItem('user');
