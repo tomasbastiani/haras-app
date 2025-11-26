@@ -269,11 +269,16 @@ const servicios = [
 
   .contact-card{
     color: #111 !important;             /* color del texto */
-    background-color: #ffffff;          /* fondo blanco */
     caret-color: #111;
   }
   
   span{
+    color: #111 !important;             /* color del texto */
+    background-color: #ffffff;          /* fondo blanco */
+    caret-color: #111;  
+  }
+
+  .custom-tabs{
     color: #111 !important;             /* color del texto */
     background-color: #ffffff;          /* fondo blanco */
     caret-color: #111;  

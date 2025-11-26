@@ -537,5 +537,10 @@ h1 {
     font-size: 20px;
   }
 
+  thead{
+    color: #111 !important;             /* color del texto */
+    caret-color: #111;
+  }
+
 }
 </style>

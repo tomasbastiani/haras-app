@@ -38,6 +38,11 @@
         <h2 class="card-title">Ver Archivos</h2>
       </div>
 
+      <div class="card" @click="goToSendEmail" v-if="isAdmin">
+        <img src="@/assets/img/correo-electronico.png" alt="Adjuntar Archivos" class="card-image" />
+        <h2 class="card-title">Enviar Email</h2>
+      </div>
+
     </div>
   </div>
 </template>
@@ -79,6 +84,10 @@ const goToFiles = () => {
 
 const goToViewFiles = () => {
   router.push('/files');
+};
+
+const goToSendEmail = () => {
+  router.push('/send-email');
 };
 
 </script>

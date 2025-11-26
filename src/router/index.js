@@ -9,6 +9,7 @@ import Profile from '@/components/Profile.vue';
 import Contact from '@/components/Contact.vue';
 import EditUser from '@/components/EditUser.vue';
 import Files from '@/components/Files.vue';
+import EnviarCorreo from '@/components/EnviarCorreo.vue';
 
 const routes = [
   { path: '/', component: Home },
@@ -21,6 +22,7 @@ const routes = [
   { path: '/contact-services', component: Contact, meta: { requiresAuth: true } },
   { path: '/edit-users', component: EditUser, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/files', component: Files, meta: { requiresAuth: true } },
+  { path: '/send-email', component: EnviarCorreo, meta: { requiresAuth: true } },
 ];
 
 const router = createRouter({

@@ -691,6 +691,12 @@ h3{
     caret-color: #111;  
   }
 
+  .tabs-wrapper{
+    color: #111 !important;             /* color del texto */
+    background-color: #ffffff;          /* fondo blanco */
+    caret-color: #111;  
+  }
+
 }
 
 </style>

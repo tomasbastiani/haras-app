@@ -897,6 +897,12 @@ input[disabled] {
   .filters select{
     margin-left: auto;
   }
+  
+  .pdf-loading-msg{
+    color: #111 !important;             /* color del texto */
+    background-color: #ffffff;          /* fondo blanco */
+    caret-color: #111; 
+  }
 
 }
 

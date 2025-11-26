@@ -512,6 +512,17 @@ justify-content: center;
     gap: 10%;
   }
 
+  h2{
+    color: #111 !important;             /* color del texto */
+    background-color: #ffffff;          /* fondo blanco */
+    caret-color: #111; 
+  }
+
+  thead{
+    color: #111 !important;             /* color del texto */
+    caret-color: #111; 
+  }
+
 }
 
 </style>
