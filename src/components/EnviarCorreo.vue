@@ -112,19 +112,33 @@
 
         <div class="form-group">
           <label>Cuerpo del mensaje</label>
-          <textarea
-            v-model="body"
-            class="textarea-body"
-            rows="8"
-            placeholder="Escribí el contenido del correo. Podés usar {nombre}, {lote}, {lotemoroso} y {detalleDeudaxLote} como variables."
-          ></textarea>
+
+          <div class="textarea-wrapper">
+            <!-- Capa de abajo: texto con variables coloreadas -->
+            <div
+              ref="bodyHighlightRef"
+              class="textarea-highlight"
+              v-html="highlightedBody"
+            ></div>
+
+            <!-- Capa de arriba: textarea real (texto transparente, cursor visible) -->
+            <textarea
+              ref="bodyTextareaRef"
+              v-model="body"
+              class="textarea-body textarea-overlay"
+              rows="8"
+              placeholder="Escribí el contenido del correo. Podés usar {nombre}, {lote}, {lotemoroso} y {detalleDeudaxLote} como variables."
+              @scroll="syncBodyScroll"
+            ></textarea>
+          </div>
+
           <p class="help-text">
             Variables disponibles:
             <strong>{nombre}</strong>,
             <strong>{lote}</strong>,
             <strong>{lotemoroso}</strong>,
             <strong>{detalleDeudaxLote}</strong>
-        </p>
+          </p>
         </div>
 
         <div class="summary">
@@ -171,6 +185,53 @@ const errorMessage = ref('');
 
 const invalidEmails = ref([]);
 const lastBulkResult = ref(null);
+
+const bodyTextareaRef = ref(null);
+const bodyHighlightRef = ref(null);
+
+// 🔹 variables permitidas
+const allowedVars = [
+  '{nombre}',
+  '{lote}',
+  '{lotemoroso}',
+  '{detalleDeudaxLote}',
+];
+
+// helper para escapar texto en regex
+const escapeRegExp = (text) => {
+  return text.replace(/[-[\]/{}()*+?.\\^$|]/g, '\\$&');
+};
+
+// 🔹 body con variables coloreadas
+const highlightedBody = computed(() => {
+  if (!body.value) return '';
+
+  // escapamos HTML
+  let escaped = body.value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // reemplazamos variables válidas por span
+  allowedVars.forEach((variable) => {
+    const re = new RegExp(escapeRegExp(variable), 'g');
+    escaped = escaped.replace(
+      re,
+      `<span class="var-token">${variable}</span>`
+    );
+  });
+
+  // respetar saltos de línea
+  return escaped.replace(/\n/g, '<br>');
+});
+
+// 🔹 sincronizar scroll del overlay
+const syncBodyScroll = () => {
+  if (bodyTextareaRef.value && bodyHighlightRef.value) {
+    bodyHighlightRef.value.scrollTop = bodyTextareaRef.value.scrollTop;
+  }
+};
+
 
 // Validación simple de email
 const emailRegex =
@@ -547,6 +608,63 @@ h2 {
   justify-content: center;
   margin-bottom: 16px;
 }
+
+.textarea-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* Capa de abajo: texto con highlight */
+.textarea-highlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 8px;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  color: #111827;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-y: auto;
+  pointer-events: none; /* para que los clicks vayan al textarea */
+}
+
+/* Capa de arriba: textarea real, texto invisible, cursor visible */
+.textarea-overlay {
+  position: relative;
+  background: transparent;
+  color: transparent;       /* el texto lo “vemos” abajo */
+  caret-color: #111827;     /* pero el cursor sí visible */
+  border: 1px solid transparent; /* el borde lo dibuja textarea-highlight */
+  box-sizing: border-box;
+  resize: none;             /* opcional: si querés permitir, sacá esto */
+}
+
+/* aseguramos que use el mismo tamaño que el highlight */
+.textarea-body.textarea-overlay {
+  width: 100%;
+  height: 160px;            /* podés ajustar si querés */
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  padding: 8px;
+}
+
+/* MUY IMPORTANTE: :deep porque el style es scoped y v-html no lleva data-v-xxx */
+.textarea-highlight :deep(.var-token) {
+  background: rgba(59, 130, 246, 0.12); /* azul clarito */
+  color: #1d4ed8;                        /* azul fuerte */
+  font-weight: 600;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
 
 @keyframes spin {
   0% {

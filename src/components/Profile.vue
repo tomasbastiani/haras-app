@@ -15,35 +15,6 @@
       </v-tabs>
     </div>
 
-    <!-- <div class="change-password-container" v-if="isAdmin">
-        <form @submit.prevent="handleChangePassword" class="form">
-            <div class="form-group">
-                <label for="currentPassword">Contraseña actual</label>
-                <input type="password" id="currentPassword" v-model="currentPassword" required />
-            </div>
-
-            <div class="form-group">
-                <label for="newPassword">Nueva contraseña</label>
-                <input type="password" id="newPassword" v-model="newPassword" required />
-            </div>
-
-            <div class="form-group">
-                <label for="confirmPassword">Confirmar nueva contraseña</label>
-                <input type="password" id="confirmPassword" v-model="confirmPassword" required />
-            </div>
-
-            <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
-            <div v-if="successMessage" class="success-message">{{ successMessage }}</div>
-
-            <div class="form-group">
-                <button type="submit" class="submit-button" :disabled="isLoading">
-                    <span v-if="isLoading" class="spinner"></span>
-                    <span v-else>Cambiar contraseña</span>
-                </button>
-            </div>
-        </form>
-    </div> -->
-
     <v-window v-model="tab" class="tab-content">
       
       <v-window-item value="lotes">
@@ -185,32 +156,54 @@
 
       <v-window-item value="contrasenia">
         <div class="change-password-container">
-            <form @submit.prevent="handleChangePassword" class="form">
-                <div class="form-group">
-                    <label for="currentPassword">Contraseña actual</label>
-                    <input type="password" id="currentPassword" v-model="currentPassword" required />
-                </div>
+          <form @submit.prevent="handleChangePassword" class="form">
+            <div class="form-group">
+              <label for="currentPassword">Contraseña actual</label>
+              <input type="password" id="currentPassword" v-model="currentPassword" required />
+            </div>
 
-                <div class="form-group">
-                    <label for="newPassword">Nueva contraseña</label>
-                    <input type="password" id="newPassword" v-model="newPassword" required />
-                </div>
+            <div class="form-group">
+              <label for="newPassword">Nueva contraseña</label>
+              <input type="password" id="newPassword" v-model="newPassword" required />
 
-                <div class="form-group">
-                    <label for="confirmPassword">Confirmar nueva contraseña</label>
-                    <input type="password" id="confirmPassword" v-model="confirmPassword" required />
-                </div>
+              <!-- ✅ Checklist de requisitos -->
+              <ul class="password-rules">
+                <li :class="{ valid: passwordValidation.hasMinLength }">
+                  <span class="icon">
+                    {{ passwordValidation.hasMinLength ? '✔' : '✖' }}
+                  </span>
+                  Mínimo 8 caracteres
+                </li>
+                <li :class="{ valid: passwordValidation.hasUppercase }">
+                  <span class="icon">
+                    {{ passwordValidation.hasUppercase ? '✔' : '✖' }}
+                  </span>
+                  Al menos una letra mayúscula
+                </li>
+                <li :class="{ valid: passwordValidation.hasNumber }">
+                  <span class="icon">
+                    {{ passwordValidation.hasNumber ? '✔' : '✖' }}
+                  </span>
+                  Al menos un número
+                </li>
+              </ul>
+            </div>
 
-                <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
-                <div v-if="successMessage" class="success-message">{{ successMessage }}</div>
+            <div class="form-group">
+              <label for="confirmPassword">Confirmar nueva contraseña</label>
+              <input type="password" id="confirmPassword" v-model="confirmPassword" required />
+            </div>
 
-                <div class="form-group">
-                    <button type="submit" class="submit-button" :disabled="isLoading">
-                        <span v-if="isLoading" class="spinner"></span>
-                        <span v-else>Cambiar contraseña</span>
-                    </button>
-                </div>
-            </form>
+            <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+            <div v-if="successMessage" class="success-message">{{ successMessage }}</div>
+
+            <div class="form-group">
+              <button type="submit" class="submit-button" :disabled="isLoading">
+                <span v-if="isLoading" class="spinner"></span>
+                <span v-else>Cambiar contraseña</span>
+              </button>
+            </div>
+          </form>
         </div>
       </v-window-item>
 
@@ -287,17 +280,58 @@ onMounted(() => {
   }
 })
 
+// ✅ estado derivado para la checklist
+const passwordValidation = computed(() => {
+  const value = newPassword.value || '';
+  const hasMinLength = value.length >= 8;
+  const hasUppercase = /[A-Z]/.test(value);
+  const hasNumber = /\d/.test(value);
+
+  return { hasMinLength, hasUppercase, hasNumber };
+});
+
+// ✅ función para armar mensajes de error al enviar
+const getPasswordErrors = (password) => {
+  const errors = [];
+
+  if (password.length < 8) {
+    errors.push('La contraseña debe tener al menos 8 caracteres.');
+  }
+
+  if (!/[A-Z]/.test(password)) {
+    errors.push('La contraseña debe incluir al menos una letra mayúscula.');
+  }
+
+  if (!/\d/.test(password)) {
+    errors.push('La contraseña debe incluir al menos un número.');
+  }
+
+  return errors;
+};
+
 const handleChangePassword = async () => {
   errorMessage.value = '';
   successMessage.value = '';
   isLoading.value = true;
 
+  // 1) Validar que coincidan
   if (newPassword.value !== confirmPassword.value) {
     errorMessage.value = 'Las nuevas contraseñas no coinciden.';
     isLoading.value = false;
     return;
   }
 
+  // 2) Validar requisitos de la nueva contraseña
+  const passwordErrors = getPasswordErrors(newPassword.value || '');
+
+  if (passwordErrors.length > 0) {
+    // Si querés cada una en línea separada en el div rojo, podés usar '\n'
+    errorMessage.value = passwordErrors.join(' ');
+    isLoading.value = false;
+    return;
+  }
+
+  // 3) Si todo ok, llamar al backend
   try {
     const token = localStorage.getItem('token');
 
@@ -320,17 +354,13 @@ const handleChangePassword = async () => {
     newPassword.value = '';
     confirmPassword.value = '';
 
-    // Espera 2 segundos y redirige
     setTimeout(() => {
       router.push('/menu');
     }, 2000);
   } catch (error) {
     console.log('error', error);
-    if (error.response?.data?.message === 'The new password must be at least 8 characters.') {
-      errorMessage.value = 'La contraseña debe tener al menos 8 caracteres.';
-    } else {
-      errorMessage.value = error.response?.data?.message || 'Error al cambiar la contraseña.';
-    }
+    errorMessage.value =
+      error.response?.data?.message || 'Error al cambiar la contraseña.';
   } finally {
     isLoading.value = false;
   }
@@ -651,6 +681,36 @@ h3{
   font-size: 14px;
   color: #333;
 }
+
+.password-rules {
+  width: 80%;
+  list-style: none;
+  padding: 0;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+  font-size: 0.85rem;
+  text-align: left;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.password-rules li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #7f8c8d; /* gris por defecto */
+}
+
+.password-rules li.valid {
+  color: #27ae60; /* verde cuando cumple */
+}
+
+.password-rules .icon {
+  font-weight: bold;
+  width: 1.2rem;
+  text-align: center;
+}
+
 
 @media (max-width: 768px) {
   .facturas-table {
