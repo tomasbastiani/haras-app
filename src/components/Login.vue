@@ -12,11 +12,23 @@
       <label for="password">Contraseña</label>
       <input v-model="password" type="password" id="password" required />
 
-      <button type="submit" :disabled="loading">
+      <button type="submit" :disabled="loading" class="login-button">
         <span v-if="loading" class="spinner"></span>
         <span v-else>Iniciar sesión</span>
       </button>
+
+      <!-- 🔹 Enlace / botón de "Olvidé mi contraseña" -->
+      <div class="forgot-password">
+        <button
+          type="button"
+          class="forgot-password-button"
+          @click="goToForgotPassword"
+        >
+          ¿Olvidaste tu contraseña?
+        </button>
+      </div>
     </form>
+
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
   </div>
 </template>
@@ -46,40 +58,37 @@ const handleLogin = async () => {
       email: email.value,
       password: password.value,
     });
-    console.log('response', response)
+    console.log('response', response);
 
     const userEmail = response.data.user.email;
     const admin = response.data.user.admin;
 
-    // ⬇ Guardamos usuario y tiempo de login
     const now = new Date().getTime();
     const sessionDuration = 30 * 60 * 1000; // 30 minutos
     localStorage.setItem('user', userEmail);
     localStorage.setItem('loginTime', now);
     localStorage.setItem('sessionDuration', sessionDuration);
 
-    // ⬇ Guardamos admin si corresponde
     if (admin === 1) {
       localStorage.setItem('admin', admin);
     } else {
       localStorage.removeItem('admin');
     }
 
-    // ⬇ Configuramos auto-logout
     setTimeout(() => {
       localStorage.removeItem('user');
       localStorage.removeItem('admin');
       localStorage.removeItem('loginTime');
       localStorage.removeItem('sessionDuration');
-      router.push('/login'); // redirigir al login
+      router.push('/login');
     }, sessionDuration);
 
-    // ⬇ Redirigir al menú
     router.push('/menu').then(() => {
       window.location.reload();
     });
   } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Error al iniciar sesión';
+    errorMessage.value =
+      error.response?.data?.message || 'Error al iniciar sesión';
   } finally {
     loading.value = false;
   }
@@ -92,13 +101,18 @@ const checkUser = () => {
 const goBack = () => {
   router.push('/');
 };
+
+// 🔹 Navegar a la vista de "Olvidé mi contraseña"
+const goToForgotPassword = () => {
+  router.push('/forgot-password');
+};
 </script>
 
 <style scoped>
 .login-container {
   width: 40%;
   margin: 5rem auto;
-  padding: 3rem; /* Más padding interno */
+  padding: 3rem;
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   background-color: #fff;
@@ -120,7 +134,7 @@ const goBack = () => {
 }
 
 h1 {
-  font-size: 2rem; /* Más grande el título */
+  font-size: 2rem;
   margin: 0;
   color: #2c3e50;
 }
@@ -143,23 +157,45 @@ h1 {
   border-radius: 10px;
 }
 
-.login-form button {
+/* 🔹 Contenedor del link "Olvidé mi contraseña" */
+.forgot-password {
     margin-top: 2rem;
-    padding: 0.5rem;
-    font-size: 1rem;
-    background-color: #27ae60;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    width: 30%;
     margin-right: auto;
     margin-left: auto;
 }
 
-.login-form button:hover {
+/* 🔹 Estilo tipo enlace */
+.forgot-password-button {
+  background: none;
+  border: none;
+  color: #2980b9;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+}
+
+.forgot-password-button:hover {
+  text-decoration: none;
+}
+
+.login-form .login-button {
+  margin-top: 2rem;
+  padding: 0.5rem;
+  font-size: 1rem;
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  width: 30%;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.login-form .login-button:hover {
   background-color: #219150;
 }
 
@@ -188,30 +224,26 @@ h1 {
 /* Responsive */
 @media (max-width: 768px) {
   .login-container {
-      width: 90%;
+    width: 90%;
   }
 }
 
-
 @media (max-width: 480px) {
-  
-  h1{
+  h1 {
     font-size: 1.3rem;
   }
 
-  .login-form{
+  .login-form {
     padding: 0.4rem;
     font-size: 0.8rem;
   }
 
-  .login-form button{
+  .login-form .login-button {
     width: 70%;
   }
 
-
+  .forgot-password {
+    text-align: left;
+  }
 }
-
-
-
-
 </style>

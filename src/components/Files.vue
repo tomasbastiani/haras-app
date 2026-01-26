@@ -50,6 +50,34 @@
 
     <!-- Tabla de archivos (la ven todos; el admin ve solo esto) -->
     <div class="table-wrapper">
+      <!-- 🔍 Filtros -->
+      <div class="filters">
+        <input
+          v-model="filterLote"
+          class="filter-input"
+          type="text"
+          placeholder="Filtrar por Lote"
+        />
+        <input
+          v-model="filterCarta"
+          class="filter-input"
+          type="text"
+          placeholder="Filtrar por Carta Nº"
+        />
+        <input
+          v-model="filterUser"
+          class="filter-input"
+          type="text"
+          placeholder="Filtrar por Usuario"
+        />
+        <input
+          v-model="filterComments"
+          class="filter-input"
+          type="text"
+          placeholder="Filtrar por Comentarios"
+        />
+      </div>
+
       <table class="custom-table">
         <thead>
           <tr>
@@ -62,7 +90,8 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="archivo in archivos" :key="archivo.id">
+          <!-- 👇 acá usamos filteredArchivos -->
+          <tr v-for="archivo in filteredArchivos" :key="archivo.id">
             <td>{{ archivo.nlote }}</td>
             <td>{{ archivo.ncarta }}</td>
             <td>{{ archivo.user }}</td>
@@ -97,7 +126,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue"
+import { ref, onMounted, computed  } from "vue"
 import axios from "@/axios"
 import { useRouter } from 'vue-router'
 import deleteIcon from '@/assets/img/borrar.png';
@@ -109,6 +138,11 @@ const successMessage = ref("")
 const errorMessage = ref("")
 const loading = ref(false)
 const isAdmin = ref(false);
+const filterLote = ref('')
+const filterCarta = ref('')
+const filterUser = ref('')
+const filterComments = ref('')
+
 
 const nuevoArchivo = ref({
   nlote: "",
@@ -289,6 +323,27 @@ const fetchArchivos = async () => {
     console.error("Error al cargar archivos", err)
   }
 }
+
+const filteredArchivos = computed(() => {
+  return archivos.value.filter(a => {
+    const lote = String(a.nlote ?? '').toLowerCase()
+    const carta = String(a.ncarta ?? '').toLowerCase()
+    const user = String(a.user ?? '').toLowerCase()
+    const comments = String(a.comments ?? '').toLowerCase()
+
+    const fLote = filterLote.value.toLowerCase()
+    const fCarta = filterCarta.value.toLowerCase()
+    const fUser = filterUser.value.toLowerCase()
+    const fComments = filterComments.value.toLowerCase()
+
+    const matchLote = !fLote || lote.includes(fLote)
+    const matchCarta = !fCarta || carta.includes(fCarta)
+    const matchUser = !fUser || user.includes(fUser)
+    const matchComments = !fComments || comments.includes(fComments)
+
+    return matchLote && matchCarta && matchUser && matchComments
+  })
+})
 
 
 onMounted(() => {
@@ -530,6 +585,20 @@ h1 {
   background: #4b5563;
 }
 
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.filter-input {
+  flex: 1 1 180px;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
 
 @media (max-width: 480px) {
 
@@ -540,6 +609,14 @@ h1 {
   thead{
     color: #111 !important;             /* color del texto */
     caret-color: #111;
+  }
+
+  .filters {
+    flex-direction: column;
+  }
+
+  .filter-input {
+    width: 100%;
   }
 
 }

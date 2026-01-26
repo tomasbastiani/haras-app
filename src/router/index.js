@@ -10,6 +10,8 @@ import Contact from '@/components/Contact.vue';
 import EditUser from '@/components/EditUser.vue';
 import Files from '@/components/Files.vue';
 import EnviarCorreo from '@/components/EnviarCorreo.vue';
+import ForgotPassword from '@/components/ForgotPassword.vue';
+import ResetPassword from '@/components/ResetPassword.vue';
 
 const routes = [
   { path: '/', component: Home },
@@ -23,6 +25,8 @@ const routes = [
   { path: '/edit-users', component: EditUser, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/files', component: Files, meta: { requiresAuth: true } },
   { path: '/send-email', component: EnviarCorreo, meta: { requiresAuth: true } },
+  { path: '/forgot-password', component: ForgotPassword },
+  { path: '/reset-password', component: ResetPassword },
 ];
 
 const router = createRouter({
