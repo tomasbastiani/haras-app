@@ -159,9 +159,9 @@ const enviarEmail = async () => {
 // ];
 
 const contactos = [
-  { titulo: 'Intendencia', mail: 'tomas.bastiani@hotmail.com', tel: '0348-4494369' },
-  { titulo: 'Administración', mail: 'tomas.bastiani@hotmail.com', tel: '0348-4268016' },
-  { titulo: 'Arquitectura', mail: 'tomas.bastiani@hotmail.com', tel: '0348-4268019' },
+  { titulo: 'Intendencia', mail: 'intendencia@mail.com', tel: '0348-4494369' },
+  { titulo: 'Administración', mail: 'admin@mail.com', tel: '0348-4268016' },
+  { titulo: 'Arquitectura', mail: 'arquitectura@mail.com', tel: '0348-4268019' },
   { titulo: 'Guardia emergencias', tel: '0348-4268006' },
   { titulo: 'Guardia portería', tel: '0348-4494363 / 0348-4494366' },
   { titulo: 'Family', tel: '0348-4494365' }
@@ -174,7 +174,7 @@ const contactos = [
 // ];
 
 const servicios = [
-  { titulo: 'Family Service Center', tel: '0348-4494365', mail: 'tomas.bastiani@hotmail.com' },
+  { titulo: 'Family Service Center', tel: '0348-4494365', mail: 'family@mail.com' },
   { titulo: 'Exactio', tel: '0348-4494397', ws: '1161340233', mail: '' },
   { titulo: 'Actividades deportivas para niños - Cristian Lobosco', tel: '01115628857144' }
 ];

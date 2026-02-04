@@ -30,7 +30,7 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory('/test/'),//createWebHistory('/test/'),//createWebHistory(),
+  history: createWebHistory(),//createWebHistory('/test/'),//createWebHistory(),
   routes,
 });
 

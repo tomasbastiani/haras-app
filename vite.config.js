@@ -31,7 +31,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  base: '/test/',
+  // base: '/test/',
   plugins: [
     vue(),
     vueDevTools(),
@@ -42,8 +42,8 @@ export default defineConfig({
         name: 'Haras Santa Maria',
         short_name: 'HSM',
         description: 'Portal de propietarios - Haras Santa Maria',
-        start_url: '/test/',
-        scope: '/test/',
+        start_url: '/',
+        scope: '/',
         display: 'standalone',
         background_color: '#ffffff',
         theme_color: '#0f172a',
