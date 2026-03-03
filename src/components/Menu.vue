@@ -43,6 +43,16 @@
         <h2 class="card-title">Enviar Email</h2>
       </div>
 
+      <div class="card" @click="goToImportGastos" v-if="isAdmin">
+        <img src="@/assets/img/importar-archivo.png" alt="Importador Gastos Comunes Notificaciones" class="card-image" />
+        <h2 class="card-title">Importador Gastos Comunes Notificaciones</h2>
+      </div>
+
+      <div class="card" @click="goToImportMorosos" v-if="isAdmin">
+        <img src="@/assets/img/importar-archivo.png" alt="Importador Morosos" class="card-image" />
+        <h2 class="card-title">Importador Morosos</h2>
+      </div>
+
     </div>
   </div>
 </template>
@@ -88,6 +98,14 @@ const goToViewFiles = () => {
 
 const goToSendEmail = () => {
   router.push('/send-email');
+};
+
+const goToImportGastos = () => {
+  router.push('/import-gastos');
+};
+
+const goToImportMorosos = () => {
+  router.push('/import-morosos');
 };
 
 </script>

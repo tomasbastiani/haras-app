@@ -12,6 +12,8 @@ import Files from '@/components/Files.vue';
 import EnviarCorreo from '@/components/EnviarCorreo.vue';
 import ForgotPassword from '@/components/ForgotPassword.vue';
 import ResetPassword from '@/components/ResetPassword.vue';
+import ImportGastos from '@/components/ImportGastos.vue';
+import ImportMorosos from '@/components/ImportMorosos.vue';
 
 const routes = [
   { path: '/', component: Home },
@@ -27,6 +29,8 @@ const routes = [
   { path: '/send-email', component: EnviarCorreo, meta: { requiresAuth: true } },
   { path: '/forgot-password', component: ForgotPassword },
   { path: '/reset-password', component: ResetPassword },
+  { path: '/import-gastos', component: ImportGastos },
+  { path: '/import-morosos', component: ImportMorosos },
 ];
 
 const router = createRouter({
