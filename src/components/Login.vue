@@ -37,7 +37,9 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/axios';
+import { useAuth } from '@/composables/useAuth'
 
+const { login } = useAuth()
 const email = ref('');
 const password = ref('');
 const errorMessage = ref('');
@@ -50,49 +52,29 @@ onMounted(() => {
 });
 
 const handleLogin = async () => {
-  loading.value = true;
-  errorMessage.value = '';
+  loading.value = true
+  errorMessage.value = ''
 
   try {
     const response = await api.post('/login', {
       email: email.value,
       password: password.value,
-    });
-    console.log('response', response);
+    })
 
-    const userEmail = response.data.user.email;
-    const admin = response.data.user.admin;
+    const userEmail = response.data.user.email
+    const admin = response.data.user.admin === 1
 
-    const now = new Date().getTime();
-    const sessionDuration = 30 * 60 * 1000; // 30 minutos
-    localStorage.setItem('user', userEmail);
-    localStorage.setItem('loginTime', now);
-    localStorage.setItem('sessionDuration', sessionDuration);
+    login(userEmail, admin)
 
-    if (admin === 1) {
-      localStorage.setItem('admin', admin);
-    } else {
-      localStorage.removeItem('admin');
-    }
+    router.push('/menu')
 
-    setTimeout(() => {
-      localStorage.removeItem('user');
-      localStorage.removeItem('admin');
-      localStorage.removeItem('loginTime');
-      localStorage.removeItem('sessionDuration');
-      router.push('/login');
-    }, sessionDuration);
-
-    router.push('/menu').then(() => {
-      window.location.reload();
-    });
   } catch (error) {
     errorMessage.value =
-      error.response?.data?.message || 'Error al iniciar sesión';
+      error.response?.data?.message || 'Error al iniciar sesión'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
 const checkUser = () => {
   userExists.value = !!localStorage.getItem('user');

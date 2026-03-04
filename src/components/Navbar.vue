@@ -7,30 +7,30 @@
                           />
         </div>
       <nav class="nav-links">
-        <a v-if="!userExists" href="#nosotros">Nosotros</a>
-        <a v-if="!userExists" href="#como-llegar">¿Cómo llegar?</a>
-        <router-link to="/login" v-if="!userExists">Propietarios</router-link>
+        <a v-if="!user" href="#nosotros">Nosotros</a>
+        <a v-if="!user" href="#como-llegar">¿Cómo llegar?</a>
+        <router-link to="/login" v-if="!user">Propietarios</router-link>
 
         <div
-          v-if="userExists"
+          v-if="user"
           class="profile-container"
-          @mouseenter="dropdownVisible = true"
-          @mouseleave="dropdownVisible = false"
+          ref="profileRef"
         >
-          <img
-            :src="usuarioIcon"
-            alt="Perfil"
-            class="profile-icon"
-          />
-          <div v-if="dropdownVisible" class="dropdown">
-            <button @click="goToProfile">Mi Perfil</button>
-            <button @click="logout">
+          <button class="profile-button" @click="toggleDropdown">
+            <img :src="usuarioIcon" alt="Perfil" class="profile-icon" />
+          </button>
+
+          <transition name="fade-slide">
+            <div v-if="dropdownVisible" class="dropdown">
+              <button @click="goToProfile">Mi Perfil</button>
+              <button @click="handleLogout">
                 <span class="logout-content">
-                    <img src="@/assets/img/cerrar-sesion.png" alt="logout" class="icon" />
-                    Cerrar sesión
+                  <img src="@/assets/img/cerrar-sesion.png" class="icon" />
+                  Cerrar sesión
                 </span>
-            </button>
-          </div>
+              </button>
+            </div>
+          </transition>
         </div>
       </nav>
     </div>
@@ -39,29 +39,38 @@
 
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import usuarioIcon from '@/assets/img/usuario.png';
 import logo from '@/assets/img/hsm.png';
+import { useAuth } from '@/composables/useAuth'
 
-const userExists = ref(false);
-const dropdownVisible = ref(false);
+const { user, logout } = useAuth()
+const dropdownVisible = ref(false)
+const profileRef = ref(null)
 const router = useRouter();
 
-onMounted(() => {
-  userExists.value = !!localStorage.getItem('user');
-});
+const toggleDropdown = () => {
+  dropdownVisible.value = !dropdownVisible.value
+}
 
-const logout = () => {
-  localStorage.removeItem('user');
-  localStorage.removeItem('admin');
-  localStorage.removeItem('token')
-  localStorage.removeItem('loginTime');
-  localStorage.removeItem('sessionDuration')
-  userExists.value = false;
-  window.location.reload();
-  router.push('/login');
-};
+const handleClickOutside = (event) => {
+  if (profileRef.value && !profileRef.value.contains(event.target)) {
+    dropdownVisible.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
+
+const handleLogout = () => {
+  logout()
+}
 
 const goToProfile = () => {
   router.push('/mi-perfil');
@@ -137,31 +146,35 @@ justify-content: center;
 }
 
 .dropdown {
-    position: absolute;
-    right: 0;
-    background-color: #fff;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 0.5rem;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+  position: absolute;
+  right: 0;
+  top: 45px;
+  min-width: 200px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 0.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  animation: fadeIn 0.15s ease-out;
 }
 
 .dropdown button {
   background: none;
   border: none;
   text-align: left;
-  padding: 0.5rem;
+  padding: 0.65rem 0.75rem;
   font-size: 0.95rem;
+  border-radius: 8px;
   color: #2c3e50;
   cursor: pointer;
-  width: 175px;
+  transition: all 0.2s ease;
 }
 
 .dropdown button:hover {
-  background-color: #f2f2f2;
+  background-color: #f5f7f6;
+  transform: translateX(2px);
 }
 
 .logout-content {
@@ -174,6 +187,41 @@ justify-content: center;
   width: 16px;
   height: 16px;
   color: #2c3e50;
+}
+
+.profile-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.profile-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.profile-icon:hover {
+  border-color: #27ae60;
+  transform: scale(1.05);
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.18s ease;
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 /* Responsive */
