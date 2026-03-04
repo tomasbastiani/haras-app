@@ -1,6 +1,6 @@
 <template>
   <footer class="footer">
-    <p>© 2025 Haras Santa María</p>
+    <p>© 2026 Haras Santa María</p>
   </footer>
 </template>
 

@@ -42,6 +42,7 @@
         <thead>
           <tr>
             <th>Email</th>
+            <th>Nombre</th>
             <th>Número de Lote</th>
             <th>Monto</th>
           </tr>
@@ -49,6 +50,7 @@
         <tbody>
           <tr v-for="item in datosFiltrados" :key="item.id">
             <td>{{ item.email }}</td>
+            <td>{{ item.nombre }}</td>
             <td>{{ item.nlote }}</td>
             <td>$ {{ item.monto }}</td>
           </tr>

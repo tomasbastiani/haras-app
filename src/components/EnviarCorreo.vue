@@ -127,7 +127,7 @@
               v-model="body"
               class="textarea-body textarea-overlay"
               rows="8"
-              placeholder="Escribí el contenido del correo. Podés usar {nombre}, {lote}, {lotemoroso} y {detalleDeudaxLote} como variables."
+              placeholder="Escribí el contenido del correo. Podés usar {nombre}, {lote}, {lotemoroso}, {detalledeudaxlote} y {nombremoroso} como variables."
               @scroll="syncBodyScroll"
             ></textarea>
           </div>
@@ -135,9 +135,10 @@
           <p class="help-text">
             Variables disponibles:
             <strong>{nombre}</strong>,
+            <strong>{nombremoroso}</strong>,
             <strong>{lote}</strong>,
             <strong>{lotemoroso}</strong>,
-            <strong>{detalleDeudaxLote}</strong>
+            <strong>{detalledeudaxlote}</strong>
           </p>
         </div>
 
@@ -192,9 +193,10 @@ const bodyHighlightRef = ref(null);
 // 🔹 variables permitidas
 const allowedVars = [
   '{nombre}',
+  '{nombremoroso}',
   '{lote}',
   '{lotemoroso}',
-  '{detalleDeudaxLote}',
+  '{detalledeudaxlote}',
 ];
 
 // helper para escapar texto en regex
