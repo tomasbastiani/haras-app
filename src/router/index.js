@@ -14,6 +14,7 @@ import ForgotPassword from '@/components/ForgotPassword.vue';
 import ResetPassword from '@/components/ResetPassword.vue';
 import ImportGastos from '@/components/ImportGastos.vue';
 import ImportMorosos from '@/components/ImportMorosos.vue';
+import NotificationsCenter from '@/components/NotificationsCenter.vue';
 
 const routes = [
   { path: '/', component: Home },
@@ -31,6 +32,7 @@ const routes = [
   { path: '/reset-password', component: ResetPassword },
   { path: '/import-gastos', component: ImportGastos },
   { path: '/import-morosos', component: ImportMorosos },
+  { path: '/notifications-center', component: NotificationsCenter, meta: { requiresAuth: true, requiresAdmin: true } },
 ];
 
 const router = createRouter({

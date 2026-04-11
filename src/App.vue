@@ -1,17 +1,48 @@
 <template>
-  <div id="app">
+  <v-app>
     <Navbar />
     <main class="main-content">
       <router-view />
     </main>
     <Footer />
-  </div>
+    
+    <!-- Snackbar Global para Notificaciones Push -->
+    <v-snackbar
+      v-model="snackbar.show"
+      :timeout="5000"
+      color="primary"
+      elevation="24"
+      location="top right"
+    >
+      <div class="d-flex align-center">
+        <v-icon color="white" class="mr-3">mdi-bell-ring</v-icon>
+        <div>
+          <div class="text-subtitle-1 font-weight-bold">{{ snackbar.title }}</div>
+          <div class="text-body-2">{{ snackbar.body }}</div>
+        </div>
+      </div>
+      <template v-slot:actions>
+        <v-btn color="white" variant="text" @click="snackbar.show = false">
+          Cerrar
+        </v-btn>
+      </template>
+    </v-snackbar>
+  </v-app>
 </template>
 
 <script setup>
-import { onMounted} from 'vue';
+import { onMounted, reactive } from 'vue';
 import Navbar from './components/Navbar.vue'
 import Footer from './components/Footer.vue'
+import { listenForegroundMessages } from '@/firebase';
+import { useNotifications } from '@/composables/useNotifications'
+
+const { addNotification } = useNotifications();
+const snackbar = reactive({
+  show: false,
+  title: '',
+  body: ''
+});
 
 const checkSession = () => {
   const loginTime = localStorage.getItem('loginTime');
@@ -34,7 +65,23 @@ const checkSession = () => {
 };
 
 onMounted(() => {
-  checkSession();
+  if (checkSession()) {
+    try {
+      listenForegroundMessages();
+    } catch (e) {
+      console.log('Firebase todavia no inicializado o sin permiso.', e);
+    }
+  }
+
+  // Listener para el evento de notificación push que disparamos desde firebase.js
+  window.addEventListener('push-notification', (event) => {
+    snackbar.title = event.detail.title;
+    snackbar.body = event.detail.body;
+    snackbar.show = true;
+    
+    // Lo agregamos al historial en tiempo real
+    addNotification(event.detail);
+  });
 });
 </script>
 

@@ -53,6 +53,11 @@
         <h2 class="card-title">Importador Morosos</h2>
       </div>
 
+      <div class="card" @click="goToNotifications" v-if="isAdmin">
+        <img src="@/assets/img/notificaciones.png" alt="Centro de Notificaciones" class="card-image" />
+        <h2 class="card-title">Centro de Notificaciones</h2>
+      </div>
+
     </div>
   </div>
 </template>
@@ -106,6 +111,10 @@ const goToImportGastos = () => {
 
 const goToImportMorosos = () => {
   router.push('/import-morosos');
+};
+
+const goToNotifications = () => {
+  router.push('/notifications-center');
 };
 
 </script>

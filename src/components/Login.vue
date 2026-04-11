@@ -37,7 +37,8 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '@/axios';
-import { useAuth } from '@/composables/useAuth'
+import { useAuth } from '@/composables/useAuth';
+import { requestPushNotificationPermission } from '@/firebase';
 
 const { login } = useAuth()
 const email = ref('');
@@ -65,6 +66,9 @@ const handleLogin = async () => {
     const admin = response.data.user.admin === 1
 
     login(userEmail, admin)
+
+    // Solicitar permisos FCM en segundo plano sin interrumpir la navegacion
+    requestPushNotificationPermission(userEmail)
 
     router.push('/menu')
 
