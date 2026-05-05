@@ -22,7 +22,7 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Notificacion recibida en Background ', payload);
   
-  // Avisar a todas las pestañas abiertas de la app
+  // Avisar a todas las pestañas abiertas de la app (para historial o badges)
   self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
     clients.forEach((client) => {
       client.postMessage({
@@ -32,12 +32,39 @@ messaging.onBackgroundMessage((payload) => {
     });
   });
 
-  const notificationTitle = payload.notification.title;
+  // Como enviamos mensajes "Data-only", extraemos de payload.data
+  const notificationTitle = payload.data.title || "Haras Santa María";
   const notificationOptions = {
-    body: payload.notification.body,
+    body: payload.data.body || "",
     icon: '/icons/icon-192x192.png',
-    data: payload.data,
+    badge: '/icons/icon-192x192.png',
+    data: {
+      url: payload.data.url || 'https://harassantamaria.com.ar/login'
+    },
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  return self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Manejar el CLICK en la notificación
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close(); // Cerrar la notificación
+
+  const urlToOpen = event.notification.data.url;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // 1. Si hay una pestaña abierta con esa URL, enfocarla
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // 2. Si no hay, abrir una nueva
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(urlToOpen);
+      }
+    })
+  );
 });

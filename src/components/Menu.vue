@@ -123,6 +123,7 @@ const goToNotifications = () => {
 .menu-container {
   text-align: center;
   margin-top: 5rem;
+  margin-bottom: 5rem;
 }
 
 .title {

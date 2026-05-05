@@ -38,7 +38,7 @@
 
         <div class="target-selection">
           <p class="text-subtitle-1 font-weight-bold mb-2">Destinatarios:</p>
-          <v-radio-group v-model="notification.target" inline>
+          <v-radio-group v-model="notification.target" inline class="d-flex flex-wrap">
             <v-radio label="Todos los usuarios" value="all" color="primary"></v-radio>
             <v-radio label="Seleccionar específicos" value="specific" color="primary"></v-radio>
           </v-radio-group>
@@ -48,7 +48,7 @@
         <v-expand-transition>
           <div v-if="notification.target === 'specific'" class="specific-target-panel mt-4">
             <v-card variant="outlined" class="pa-4">
-              <div class="d-flex align-center gap-4 mb-4">
+              <div class="d-flex flex-wrap align-center gap-4 mb-4">
                 <v-text-field
                   v-model="searchQuery"
                   label="Buscar por Lote o Email"
@@ -220,17 +220,18 @@ onMounted(fetchUsers);
   display: flex;
   align-items: center;
   margin-bottom: 2rem;
-  background: white;
+  background: var(--v-theme-surface, #ffffff);
   padding: 1rem 2rem;
   border-radius: 12px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  color: inherit;
 }
 
 .back-button {
   font-size: 24px;
   background: none;
   border: none;
-  color: #333;
+  color: inherit;
   cursor: pointer;
   margin-right: 20px;
   transition: transform 0.2s;
@@ -245,11 +246,11 @@ h2 {
   margin: 0;
   font-size: 1.8rem;
   font-weight: 500;
-  color: #2c3e50;
+  color: inherit;
 }
 
 .target-selection {
-  background: #f8f9fa;
+  background: rgba(128, 128, 128, 0.1);
   padding: 1rem;
   border-radius: 8px;
 }
@@ -257,8 +258,9 @@ h2 {
 .table-scroll-container {
   max-height: 400px;
   overflow-y: auto;
+  overflow-x: auto;
   margin-top: 1rem;
-  border: 1px solid #eee;
+  border: 1px solid rgba(128, 128, 128, 0.2);
   border-radius: 4px;
 }
 
@@ -266,25 +268,26 @@ h2 {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  min-width: 400px;
 }
 
 .users-table th {
   position: sticky;
   top: 0;
-  background: #f4f4f4;
+  background: var(--v-theme-surface, #f4f4f4);
   padding: 12px;
   text-align: left;
-  border-bottom: 2px solid #ddd;
+  border-bottom: 2px solid rgba(128, 128, 128, 0.2);
   z-index: 1;
 }
 
 .users-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
 }
 
 .users-table tr:hover {
-  background: #f0f7ff;
+  background: rgba(128, 128, 128, 0.05);
 }
 
 input[type="checkbox"] {
@@ -297,14 +300,21 @@ input[type="checkbox"] {
 @media (max-width: 600px) {
   .notifications-center-container {
     margin: 1rem auto;
+    padding: 0 0.5rem;
+    max-width: 100vw;
   }
   
   .header {
     padding: 1rem;
+    flex-wrap: wrap;
   }
   
   h2 {
     font-size: 1.4rem;
+  }
+  
+  .v-card {
+    padding: 1rem !important;
   }
 }
 </style>

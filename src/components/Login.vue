@@ -10,7 +10,12 @@
       <input v-model="email" type="email" id="email" required />
 
       <label for="password">Contraseña</label>
-      <input v-model="password" type="password" id="password" required />
+      <div class="password-wrapper">
+        <input v-model="password" :type="showPassword ? 'text' : 'password'" id="password" required />
+        <button type="button" class="eye-btn" @click="showPassword = !showPassword">
+          <v-icon size="small">{{ showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline' }}</v-icon>
+        </button>
+      </div>
 
       <button type="submit" :disabled="loading" class="login-button">
         <span v-if="loading" class="spinner"></span>
@@ -43,6 +48,7 @@ import { requestPushNotificationPermission } from '@/firebase';
 const { login } = useAuth()
 const email = ref('');
 const password = ref('');
+const showPassword = ref(false);
 const errorMessage = ref('');
 const loading = ref(false);
 const router = useRouter();
@@ -141,6 +147,30 @@ h1 {
   font-size: 1.1rem;
   border: 1px solid #ccc;
   border-radius: 10px;
+  width: 100%;
+}
+
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.eye-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.eye-btn:hover {
+  color: #333;
 }
 
 /* 🔹 Contenedor del link "Olvidé mi contraseña" */

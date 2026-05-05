@@ -242,10 +242,12 @@ onBeforeUnmount(() => {
 })
 
 const handleLogout = () => {
-  logout()
+  dropdownVisible.value = false;
+  logout();
 }
 
 const goToProfile = () => {
+  dropdownVisible.value = false;
   router.push('/mi-perfil');
 };
 
