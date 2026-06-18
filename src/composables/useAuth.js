@@ -9,13 +9,19 @@ let logoutTimer = null
 export function useAuth() {
   const router = useRouter()
 
-  const login = (userEmail, isAdmin) => {
+  const login = (userEmail, isAdmin, mustChangePassword = false) => {
     const now = Date.now()
     const sessionDuration = 30 * 60 * 1000
 
     localStorage.setItem('user', userEmail)
     localStorage.setItem('loginTime', now)
     localStorage.setItem('sessionDuration', sessionDuration)
+
+    if (mustChangePassword) {
+      localStorage.setItem('mustChangePassword', '1')
+    } else {
+      localStorage.removeItem('mustChangePassword')
+    }
 
     if (isAdmin) {
       localStorage.setItem('admin', '1')

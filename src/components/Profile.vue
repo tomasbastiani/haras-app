@@ -8,6 +8,11 @@
       <span>Usuario: {{ userEmail }}</span>
     </div>
 
+    <!-- ⚠️ Aviso de seguridad -->
+    <div v-if="mustChangePassword" class="security-warning">
+      ⚠️ Por razones de seguridad, debes actualizar tu contraseña para continuar utilizando la plataforma.
+    </div>
+
     <div class="tabs-wrapper">
       <v-tabs v-model="tab" background-color="#3f51b5" dark centered>
         <v-tab value="lotes">Mis Lotes</v-tab>
@@ -127,6 +132,22 @@
                     outlined
                     dense
                   ></v-text-field>
+
+                  <!-- ✅ Checklist de requisitos para el nuevo usuario -->
+                  <ul class="password-rules" style="margin-bottom: 20px;">
+                    <li :class="{ valid: newUserPasswordValidation.hasMinLength }">
+                      <span class="icon">{{ newUserPasswordValidation.hasMinLength ? '✔' : '✖' }}</span>
+                      Mínimo 8 caracteres
+                    </li>
+                    <li :class="{ valid: newUserPasswordValidation.hasUppercase }">
+                      <span class="icon">{{ newUserPasswordValidation.hasUppercase ? '✔' : '✖' }}</span>
+                      Al menos una letra mayúscula
+                    </li>
+                    <li :class="{ valid: newUserPasswordValidation.hasNumber }">
+                      <span class="icon">{{ newUserPasswordValidation.hasNumber ? '✔' : '✖' }}</span>
+                      Al menos un número
+                    </li>
+                  </ul>
                   <v-btn
                     :disabled="isSaving"
                     color="primary"
@@ -213,9 +234,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import axios from '@/axios';
 import editIcon from '@/assets/img/editar.png';
+
+const route = useRoute();
+const mustChangePassword = ref(!!localStorage.getItem('mustChangePassword'));
 
 const isAdmin = ref(false);
 const currentPassword = ref('');
@@ -275,6 +299,11 @@ const fetchLotes = async () => {
 onMounted(() => {
   isAdmin.value = !!localStorage.getItem('admin');
 
+  // Si viene por query param, cambiamos la pestaña
+  if (route.query.tab === 'contrasenia') {
+    tab.value = 'contrasenia'
+  }
+
   if (tab.value === 'lotes') {
     fetchLotes()
   }
@@ -283,6 +312,15 @@ onMounted(() => {
 // ✅ estado derivado para la checklist
 const passwordValidation = computed(() => {
   const value = newPassword.value || '';
+  const hasMinLength = value.length >= 8;
+  const hasUppercase = /[A-Z]/.test(value);
+  const hasNumber = /\d/.test(value);
+
+  return { hasMinLength, hasUppercase, hasNumber };
+});
+
+const newUserPasswordValidation = computed(() => {
+  const value = nuevoUsuario.value.password || '';
   const hasMinLength = value.length >= 8;
   const hasUppercase = /[A-Z]/.test(value);
   const hasNumber = /\d/.test(value);
@@ -354,6 +392,10 @@ const handleChangePassword = async () => {
     newPassword.value = '';
     confirmPassword.value = '';
 
+    // ✅ Limpiar flag de migración si existía
+    localStorage.removeItem('mustChangePassword');
+    mustChangePassword.value = false;
+
     setTimeout(() => {
       router.push('/menu');
     }, 2000);
@@ -376,32 +418,35 @@ const editarFactura = (factura) => {
 const guardarEdicionFactura = async () => {
   isSaving.value = true
   mensajeExito.value = ''
+  mensajeError.value = ''
   mostrarRegistro.value = false
 
   try {
-    // 1. Actualizar email en gastoscomunes
-    await axios.post('/update-email-lote', {
-      email: facturaEditando.value.email,
-      nlote: facturaEditando.value.nlote
-    })
-
-    // 2. Verificar si el email existe en la tabla users
+    // 1. Verificar primero si el email existe en la tabla users
     const res = await axios.get(`/verificar-email/${facturaEditando.value.email}`)
     const emailExiste = res.data.exists
 
     if (emailExiste) {
-      mensajeExito.value = 'Usuario actualizado correctamente para el lote'
+      // 2. Si existe, procedemos a actualizar el lote directamente
+      await axios.post('/update-email-lote', {
+        email: facturaEditando.value.email,
+        nlote: facturaEditando.value.nlote
+      })
+      
+      mensajeExito.value = 'Lote actualizado correctamente.'
       setTimeout(() => {
         showEditModal.value = false
         mensajeExito.value = ''
         fetchLotes();
       }, 2000)
     } else {
+      // 3. Si NO existe, mostramos el formulario de registro pero NO actualizamos el lote aún
       mostrarRegistro.value = true
       nuevoUsuario.value.email = facturaEditando.value.email
     }
   } catch (error) {
-    console.error('Error al actualizar:', error)
+    console.error('Error al verificar/actualizar:', error)
+    mensajeError.value = 'Ocurrió un error al procesar la solicitud.'
   } finally {
     isSaving.value = false
   }
@@ -412,24 +457,33 @@ const registrarNuevoUsuario = async () => {
   mensajeExito.value = ''
   mensajeError.value = ''
 
+  // Validar requisitos de seguridad antes de enviar
+  const passwordErrors = getPasswordErrors(nuevoUsuario.value.password || '');
+  if (passwordErrors.length > 0) {
+    mensajeError.value = passwordErrors.join(' ');
+    isSaving.value = false;
+    return;
+  }
+
   try {
     await axios.post('/create-user', {
       nombre: nuevoUsuario.value.nombre,
       email: nuevoUsuario.value.email,
-      password: nuevoUsuario.value.password
+      password: nuevoUsuario.value.password,
+      nlote: facturaEditando.value.nlote // Enviamos el lote para actualizarlo atómicamente
     })
 
-    mensajeExito.value = 'Usuario actualizado correctamente para el lote'
+    mensajeExito.value = 'Usuario creado y lote actualizado correctamente'
     setTimeout(() => {
       showEditModal.value = false
       mensajeExito.value = ''
     }, 2000)
   } catch (error) {
     console.error('Error al registrar usuario:', error)
-    if (error.response.data.message === 'The password must be at least 4 characters.') {
-      mensajeError.value = 'La contraseña debe tener al menos 4 caracteres'
+    if (error.response?.data?.errors?.password) {
+        mensajeError.value = 'La contraseña no cumple con los requisitos de seguridad (8 caracteres, mayúscula y número).';
     } else {
-      mensajeError.value = 'Ocurrió un error al registrar el usuario.'
+        mensajeError.value = error.response?.data?.message || 'Ocurrió un error al registrar el usuario.';
     }
   } finally {
     isSaving.value = false;
@@ -699,6 +753,17 @@ h3{
   align-items: center;
   gap: 0.4rem;
   color: #7f8c8d; /* gris por defecto */
+}
+
+.security-warning {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  text-align: center;
+  font-weight: bold;
 }
 
 .password-rules li.valid {

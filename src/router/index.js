@@ -54,6 +54,12 @@ router.beforeEach((to, from, next) => {
     return next('/login');
   }
 
+  // ⚠️ Bloqueo de seguridad: si debe cambiar la contraseña, no puede navegar a otro lado
+  const mustChangePassword = localStorage.getItem('mustChangePassword');
+  if (user && mustChangePassword && to.path !== '/mi-perfil') {
+    return next('/mi-perfil?tab=contrasenia');
+  }
+
   // Si necesita permisos de admin y no los tiene
   if (to.meta.requiresAdmin && !admin) {
     return next('/menu');
