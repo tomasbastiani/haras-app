@@ -15,6 +15,8 @@ import ResetPassword from '@/components/ResetPassword.vue';
 import ImportGastos from '@/components/ImportGastos.vue';
 import ImportMorosos from '@/components/ImportMorosos.vue';
 import NotificationsCenter from '@/components/NotificationsCenter.vue';
+import Turnero from '@/components/Turnero.vue';
+import TurneroAdmin from '@/components/TurneroAdmin.vue';
 
 const routes = [
   { path: '/', component: Home },
@@ -33,6 +35,8 @@ const routes = [
   { path: '/import-gastos', component: ImportGastos },
   { path: '/import-morosos', component: ImportMorosos },
   { path: '/notifications-center', component: NotificationsCenter, meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: '/turnero', component: Turnero, meta: { requiresAuth: true } },
+  { path: '/turnero-admin', component: TurneroAdmin, meta: { requiresAuth: true, requiresAdmin: true } },
 ];
 
 const router = createRouter({

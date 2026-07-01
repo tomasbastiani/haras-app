@@ -8,6 +8,18 @@
         <h2 class="card-title">Gastos Comunes</h2>
       </div>
 
+      <div class="card" @click="goToTurnero">
+        <img src="@/assets/img/reserva.png" alt="Turnero de Canchas" class="card-image" />
+        <h2 class="card-title">Turnero de Canchas</h2>
+      </div>
+
+      <div class="card" @click="goToTurneroAdmin" v-if="isAdmin">
+        <div class="card-icon-wrapper admin">
+          <v-icon size="56" color="white">mdi-clipboard-list</v-icon>
+        </div>
+        <h2 class="card-title">Administrar Turnos</h2>
+      </div>
+
       <div class="card" @click="goToListadoGastos" v-if="isAdmin">
         <img src="@/assets/img/listado.png" alt="Listado Total Gastos Comunes" class="card-image" />
         <h2 class="card-title">Listado Total Gastos Comunes</h2>
@@ -75,6 +87,14 @@ onMounted(() => {
 
 const goToGastos = () => {
   router.push('/gastos');
+};
+
+const goToTurnero = () => {
+  router.push('/turnero');
+};
+
+const goToTurneroAdmin = () => {
+  router.push('/turnero-admin');
 };
 
 const goToListadoGastos = () => {
@@ -160,6 +180,38 @@ const goToNotifications = () => {
   height: 140px;
   object-fit: contain;
   margin-bottom: 1rem;
+}
+
+.card-icon-wrapper {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.card-icon-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff8328, #e25822);
+  z-index: 0;
+}
+
+.card-icon-wrapper.admin::before {
+  background: linear-gradient(135deg, #2c3e50, #1a2733);
+}
+
+.card-icon-wrapper .v-icon {
+  position: relative;
+  z-index: 1;
 }
 
 .card-title {
