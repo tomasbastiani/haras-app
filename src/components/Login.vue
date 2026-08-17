@@ -69,13 +69,15 @@ const handleLogin = async () => {
     })
 
     const userEmail = response.data.user.email
+    const userName = response.data.user.nombre
     const admin = response.data.user.admin === 1
     const mustChangePassword = response.data.must_change_password === true
+    const token = response.data.token
 
-    login(userEmail, admin, mustChangePassword)
+    login(userEmail, admin, mustChangePassword, userName, token)
 
     // Solicitar permisos FCM en segundo plano sin interrumpir la navegacion
-    requestPushNotificationPermission(userEmail)
+    requestPushNotificationPermission()
 
     if (mustChangePassword) {
       router.push('/mi-perfil?tab=contrasenia')

@@ -1,21 +1,26 @@
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import router from '@/router'
 
 const user = ref(localStorage.getItem('user'))
+const userName = ref(localStorage.getItem('userName'))
 const admin = ref(localStorage.getItem('admin'))
 
-let logoutTimer = null
-
+// Sesión persistente estilo app mobile: el usuario queda logueado hasta que
+// cierra sesión manualmente o el backend rechaza el token/cookie (401).
 export function useAuth() {
-  const router = useRouter()
-
-  const login = (userEmail, isAdmin, mustChangePassword = false) => {
-    const now = Date.now()
-    const sessionDuration = 30 * 60 * 1000
-
+  const login = (userEmail, isAdmin, mustChangePassword = false, name = '', token = '') => {
     localStorage.setItem('user', userEmail)
-    localStorage.setItem('loginTime', now)
-    localStorage.setItem('sessionDuration', sessionDuration)
+
+    if (token) {
+      localStorage.setItem('token', token)
+    }
+
+    if (name) {
+      localStorage.setItem('userName', name)
+    } else {
+      localStorage.removeItem('userName')
+    }
+    userName.value = name || null
 
     if (mustChangePassword) {
       localStorage.setItem('mustChangePassword', '1')
@@ -32,21 +37,24 @@ export function useAuth() {
     }
 
     user.value = userEmail
-
-    startAutoLogout(sessionDuration)
-  }
-
-  const startAutoLogout = (duration) => {
-    if (logoutTimer) clearTimeout(logoutTimer)
-
-    logoutTimer = setTimeout(() => {
-      logout()
-    }, duration)
   }
 
   const logout = () => {
-    localStorage.clear()
+    // Revoca el token en el backend en segundo plano (best-effort). Import
+    // dinámico para evitar el ciclo axios.js <-> useAuth.js.
+    if (localStorage.getItem('token')) {
+      import('@/axios').then(({ default: api }) => {
+        api.post('/logout').catch(() => {})
+      })
+    }
+
+    localStorage.removeItem('user')
+    localStorage.removeItem('userName')
+    localStorage.removeItem('admin')
+    localStorage.removeItem('mustChangePassword')
+    localStorage.removeItem('token')
     user.value = null
+    userName.value = null
     admin.value = null
     router.push('/login')
   }
@@ -56,6 +64,7 @@ export function useAuth() {
 
   return {
     user,
+    userName,
     login,
     logout,
     isLoggedIn,

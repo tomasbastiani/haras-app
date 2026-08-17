@@ -110,6 +110,80 @@
       </v-form>
     </v-card>
 
+    <!-- Historial de Notificaciones Leídas -->
+    <v-card class="pa-6 mb-8 elevation-2 rounded-lg">
+      <v-card-title class="text-h5 pb-4">
+        <v-icon color="primary" class="mr-2">mdi-check-decagram</v-icon>
+        Notificaciones Leídas
+      </v-card-title>
+
+      <div class="filters">
+        <div class="filter-row">
+          <div class="filter-item">
+            <label>Email:</label>
+            <input v-model="readLogFilters.email" type="text" placeholder="Buscar por email" />
+          </div>
+          <div class="filter-item">
+            <label>Título:</label>
+            <input v-model="readLogFilters.title" type="text" placeholder="Buscar por título" />
+          </div>
+        </div>
+        <div class="filter-row">
+          <div class="filter-item">
+            <label>Leída desde:</label>
+            <input v-model="readLogFilters.date_from" type="date" />
+          </div>
+          <div class="filter-item">
+            <label>Leída hasta:</label>
+            <input v-model="readLogFilters.date_to" type="date" />
+          </div>
+          <div class="filter-item button-item">
+            <button class="clear-button" @click="clearReadLogFilters">Limpiar filtros</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="spinner-mounted-container" v-if="readLogsLoading">
+        <span class="spinner-mounted"></span>
+      </div>
+
+      <template v-else>
+        <div class="table-container">
+          <table class="facturas-table">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Nombre</th>
+                <th>Título</th>
+                <th>Mensaje</th>
+                <th>Enviada</th>
+                <th>Leída</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="log in readLogs" :key="log.id">
+                <td>{{ log.email || '-' }}</td>
+                <td>{{ log.nombre || '-' }}</td>
+                <td>{{ log.title }}</td>
+                <td class="text-truncate-cell">{{ log.body }}</td>
+                <td>{{ formatLogDate(log.sent_at) }}</td>
+                <td>{{ formatLogDate(log.read_at) }}</td>
+              </tr>
+              <tr v-if="readLogs.length === 0">
+                <td colspan="6" class="pa-4 text-center">No hay notificaciones leídas para estos filtros</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pagination" v-if="readLogTotal > 0">
+          <button class="pagination-button" @click="readLogPrevPage" :disabled="readLogPage === 1">Anterior</button>
+          <span>Página {{ readLogPage }} de {{ readLogLastPage }} ({{ readLogTotal }} en total)</span>
+          <button class="pagination-button" @click="readLogNextPage" :disabled="readLogPage === readLogLastPage">Siguiente</button>
+        </div>
+      </template>
+    </v-card>
+
     <!-- Snackbar de Éxito/Error Local -->
     <v-snackbar v-model="alert.show" :color="alert.color" :timeout="4000">
       {{ alert.message }}
@@ -118,7 +192,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, reactive } from 'vue';
+import { ref, onMounted, computed, reactive, watch } from 'vue';
 import api from '@/axios';
 import { useRouter } from 'vue-router';
 
@@ -206,7 +280,80 @@ const goBack = () => {
   router.push('/menu');
 };
 
-onMounted(fetchUsers);
+// ===== Historial de notificaciones leídas =====
+const readLogs = ref([]);
+const readLogsLoading = ref(false);
+const readLogPage = ref(1);
+const readLogLastPage = ref(1);
+const readLogTotal = ref(0);
+
+const readLogFilters = reactive({
+  email: '',
+  title: '',
+  date_from: '',
+  date_to: '',
+});
+
+let readLogDebounceTimer = null;
+
+const fetchReadLog = async (page = 1) => {
+  readLogsLoading.value = true;
+  try {
+    const res = await api.get('/notifications/read-log', {
+      params: {
+        page,
+        email: readLogFilters.email || undefined,
+        title: readLogFilters.title || undefined,
+        date_from: readLogFilters.date_from || undefined,
+        date_to: readLogFilters.date_to || undefined,
+      },
+    });
+    readLogs.value = res.data.data;
+    readLogPage.value = res.data.current_page;
+    readLogLastPage.value = res.data.last_page;
+    readLogTotal.value = res.data.total;
+  } catch (err) {
+    console.error('Error al cargar el historial de notificaciones leídas:', err);
+  } finally {
+    readLogsLoading.value = false;
+  }
+};
+
+watch(readLogFilters, () => {
+  clearTimeout(readLogDebounceTimer);
+  readLogDebounceTimer = setTimeout(() => fetchReadLog(1), 400);
+}, { deep: true });
+
+const readLogPrevPage = () => {
+  if (readLogPage.value > 1) fetchReadLog(readLogPage.value - 1);
+};
+
+const readLogNextPage = () => {
+  if (readLogPage.value < readLogLastPage.value) fetchReadLog(readLogPage.value + 1);
+};
+
+const clearReadLogFilters = () => {
+  readLogFilters.email = '';
+  readLogFilters.title = '';
+  readLogFilters.date_from = '';
+  readLogFilters.date_to = '';
+};
+
+const formatLogDate = (dateString) => {
+  if (!dateString) return '-';
+  return new Date(dateString).toLocaleString('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+onMounted(() => {
+  fetchUsers();
+  fetchReadLog(1);
+});
 </script>
 
 <style scoped>
@@ -294,6 +441,139 @@ input[type="checkbox"] {
   width: 18px;
   height: 18px;
   cursor: pointer;
+}
+
+/* ===== Historial de notificaciones leídas ===== */
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.filter-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 180px;
+}
+
+.filter-item label {
+  font-weight: bold;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+}
+
+.filter-item input {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.button-item {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+.clear-button {
+  padding: 9px 16px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-top: 25px;
+}
+
+.clear-button:hover {
+  background-color: #c82333;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.facturas-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.facturas-table th,
+.facturas-table td {
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  padding: 10px;
+  text-align: center;
+}
+
+.facturas-table th {
+  background: var(--v-theme-surface, #f8f8f8);
+}
+
+.text-truncate-cell {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.pagination-button {
+  background-color: #ffd100;
+  border: none;
+  color: black;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.pagination-button:disabled {
+  background-color: #dee4e9;
+  cursor: not-allowed;
+}
+
+.pagination-button:not(:disabled):hover {
+  background-color: #ffdd33;
+}
+
+.spinner-mounted-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.spinner-mounted {
+  border: 3px solid #eee;
+  border-top: 3px solid #2c3e50;
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Responsive */

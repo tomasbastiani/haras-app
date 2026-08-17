@@ -36,7 +36,9 @@ import Navbar from './components/Navbar.vue'
 import Footer from './components/Footer.vue'
 import { listenForegroundMessages } from '@/firebase';
 import { useNotifications } from '@/composables/useNotifications'
+import { useAuth } from '@/composables/useAuth'
 
+const { user } = useAuth();
 const { addNotification } = useNotifications();
 const snackbar = reactive({
   show: false,
@@ -44,28 +46,8 @@ const snackbar = reactive({
   body: ''
 });
 
-const checkSession = () => {
-  const loginTime = localStorage.getItem('loginTime');
-  const sessionDuration = localStorage.getItem('sessionDuration');
-
-  if (!loginTime || !sessionDuration) return false;
-
-  const now = new Date().getTime();
-  if (now - parseInt(loginTime) > parseInt(sessionDuration)) {
-    // Sesión expirada
-    localStorage.removeItem('user');
-    localStorage.removeItem('admin');
-    localStorage.removeItem('loginTime');
-    localStorage.removeItem('sessionDuration');
-    router.push('/login'); // redirigir al login
-    return false;
-  }
-
-  return true; // sesión válida
-};
-
 onMounted(() => {
-  if (checkSession()) {
+  if (user.value) {
     try {
       listenForegroundMessages();
     } catch (e) {

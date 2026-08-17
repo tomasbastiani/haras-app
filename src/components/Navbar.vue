@@ -19,7 +19,7 @@
                 <v-badge
                   v-if="unreadCount > 0"
                   color="error"
-                  :content="unreadCount"
+                  :content="unreadCount > 99 ? '99+' : unreadCount"
                   offset-x="3"
                   offset-y="3"
                 >
@@ -29,61 +29,58 @@
               </v-btn>
             </template>
 
-            <v-card min-width="320" max-width="400" class="rounded-lg elevation-10">
-              <v-list class="pa-0">
-                <v-list-item class="bg-primary text-white py-3">
-                  <template v-slot:prepend>
-                    <v-icon color="white">mdi-bell</v-icon>
-                  </template>
-                  <v-list-item-title class="text-h6 font-weight-bold">Notificaciones</v-list-item-title>
-                  <template v-slot:append>
-                    <v-btn
-                      v-if="unreadCount > 0"
-                      variant="text"
-                      color="white"
-                      size="small"
-                      @click="markAllAsRead"
-                    >
-                      Marcar todo como leído
-                    </v-btn>
-                  </template>
-                </v-list-item>
-              </v-list>
+            <v-card min-width="320" max-width="400" class="rounded-lg elevation-10 notif-panel">
+              <div class="notif-panel-header">
+                <v-icon color="white" size="20" class="mr-2">mdi-bell</v-icon>
+                <span class="notif-panel-title">Notificaciones</span>
+                <v-spacer></v-spacer>
+                <button v-if="unreadCount > 0" class="notif-mark-all" @click="markAllAsRead">
+                  Marcar todo leído
+                </button>
+              </div>
 
-              <v-divider></v-divider>
-
-              <v-list class="notification-list pa-0" max-height="400">
+              <v-list class="notification-list pa-0" max-height="420">
                 <template v-if="notifications.length > 0">
                   <template v-for="(item, index) in notifications" :key="item.id">
-                    <v-list-item 
+                    <v-list-item
                       :class="{ 'unread-item': !item.is_read }"
-                      class="py-3 px-4"
+                      class="notif-item py-3 px-4"
                       link
                       @click="openNotification(item)"
                     >
                       <template v-slot:prepend>
-                        <v-avatar size="40" :color="item.is_read ? 'grey-lighten-3' : 'blue-lighten-4'" class="mr-3">
-                          <v-icon :color="item.is_read ? 'grey-darken-1' : 'primary'">
-                            {{ item.is_read ? 'mdi-email-open-outline' : 'mdi-email-outline' }}
-                          </v-icon>
-                        </v-avatar>
+                        <span class="notif-dot" :class="{ 'is-unread': !item.is_read }"></span>
                       </template>
 
-                      <v-list-item-title class="text-subtitle-1 font-weight-bold mb-1">
+                      <v-list-item-title class="notif-item-title">
                         {{ item.title }}
                       </v-list-item-title>
-                      <v-list-item-subtitle class="text-body-2 text-wrap" style="opacity: 0.8">
+                      <v-list-item-subtitle class="notif-item-body">
                         {{ item.body }}
                       </v-list-item-subtitle>
-                      
-                      <div class="text-caption mt-2 grey--text">
-                        {{ formatDate(item.created_at) }}
+
+                      <div class="notif-item-time">
+                        {{ formatRelativeTime(item.created_at) }}
                       </div>
                     </v-list-item>
                     <v-divider v-if="index < notifications.length - 1"></v-divider>
                   </template>
+
+                  <v-list-item v-if="hasMore" class="notif-load-more-item" @click="loadMoreNotifications">
+                    <div class="notif-load-more">
+                      <v-progress-circular
+                        v-if="loadingMore"
+                        indeterminate
+                        size="16"
+                        width="2"
+                        color="#27ae60"
+                        class="mr-2"
+                      ></v-progress-circular>
+                      <span>{{ loadingMore ? 'Cargando...' : 'Cargar más' }}</span>
+                    </div>
+                  </v-list-item>
                 </template>
-                
+
                 <v-list-item v-else class="pa-8 text-center">
                   <v-icon size="48" color="grey-lighten-1" class="mb-4">mdi-bell-off-outline</v-icon>
                   <div class="text-body-1 grey--text">No hay notificaciones recientes</div>
@@ -96,7 +93,7 @@
         <!-- Modal de Detalle de Notificación -->
         <v-dialog v-model="showDetail" max-width="500" transition="dialog-bottom-transition" class="modern-dialog">
           <v-card v-if="selectedNotification" class="rounded-xl elevation-24">
-            <v-card-item class="bg-primary text-white py-6">
+            <v-card-item class="notif-modal-header py-6">
               <template v-slot:prepend>
                 <v-icon size="32" color="white" class="mr-4">mdi-bullhorn-variant</v-icon>
               </template>
@@ -110,9 +107,9 @@
               <div class="text-body-1 mb-6 text-grey-darken-3 line-height-relaxed">
                 {{ selectedNotification.body }}
               </div>
-              
+
               <v-divider class="mb-6"></v-divider>
-              
+
               <div class="d-flex align-center justify-space-between text-caption grey--text">
                 <div class="d-flex align-center">
                   <v-icon size="small" class="mr-1">mdi-clock-outline</v-icon>
@@ -125,10 +122,9 @@
             <v-card-actions class="pa-6 pt-0">
               <v-spacer></v-spacer>
               <v-btn
-                color="primary"
+                class="notif-modal-btn px-8 rounded-pill font-weight-bold"
                 variant="elevated"
                 size="large"
-                class="px-8 rounded-pill font-weight-bold"
                 @click="showDetail = false"
               >
                 Entendido
@@ -174,7 +170,7 @@ import { useAuth } from '@/composables/useAuth'
 import { useNotifications } from '@/composables/useNotifications'
 
 const { user, logout } = useAuth()
-const { notifications, unreadCount, fetchNotifications, markAllAsRead, markOneAsRead } = useNotifications()
+const { notifications, unreadCount, hasMore, loadingMore, fetchNotifications, loadMoreNotifications, markAllAsRead, markOneAsRead } = useNotifications()
 
 const dropdownVisible = ref(false)
 const profileRef = ref(null)
@@ -235,6 +231,23 @@ const formatDate = (dateString) => {
     hour: '2-digit',
     minute: '2-digit'
   });
+};
+
+const formatRelativeTime = (dateString) => {
+  const date = new Date(dateString);
+  const diffMin = Math.floor((Date.now() - date.getTime()) / 60000);
+
+  if (diffMin < 1) return 'Ahora';
+  if (diffMin < 60) return `Hace ${diffMin} min`;
+
+  const diffHrs = Math.floor(diffMin / 60);
+  if (diffHrs < 24) return `Hace ${diffHrs} h`;
+
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffDays === 1) return 'Ayer';
+  if (diffDays < 7) return `Hace ${diffDays} días`;
+
+  return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
 };
 
 onBeforeUnmount(() => {
@@ -317,11 +330,116 @@ const goToProfile = () => {
 }
 
 .unread-item {
-  background-color: #f0f7ff;
+  background-color: #f0f7f4;
 }
 
 .notification-list {
   overflow-y: auto;
+}
+
+.notif-panel-header {
+  display: flex;
+  align-items: center;
+  background-color: #2c3e50;
+  color: #fff;
+  padding: 0.85rem 1rem;
+}
+
+.notif-panel-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.notif-mark-all {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  opacity: 0.9;
+  text-decoration: underline;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.notif-mark-all:hover {
+  opacity: 1;
+}
+
+.notif-item {
+  cursor: pointer;
+  align-items: flex-start !important;
+}
+
+.notif-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: transparent;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+.notif-dot.is-unread {
+  background-color: #27ae60;
+}
+
+.notif-item-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.2rem;
+  white-space: normal;
+}
+
+.notif-item-body {
+  font-size: 0.85rem;
+  color: #5a6b7a;
+  opacity: 1 !important;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal !important;
+}
+
+.notif-item-time {
+  font-size: 0.72rem;
+  color: #9aa5ad;
+  margin-top: 0.35rem;
+}
+
+.notif-load-more-item {
+  cursor: pointer;
+  color: #27ae60;
+  font-weight: 600;
+  font-size: 0.85rem;
+  justify-content: center;
+}
+
+.notif-load-more-item:hover {
+  background-color: #f7f7f5;
+}
+
+.notif-load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.25rem 0;
+}
+
+.notif-modal-header {
+  background: linear-gradient(135deg, #2c3e50, #1a2733);
+  color: #fff;
+}
+
+.notif-modal-btn {
+  background-color: #27ae60 !important;
+  color: #fff !important;
 }
 
 .notif-img {

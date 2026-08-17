@@ -1,14 +1,20 @@
-import { ref, computed, watch } from 'vue';
+import { ref } from 'vue';
 import api from '@/axios';
 
 const notifications = ref([]);
 const loading = ref(false);
+const loadingMore = ref(false);
+const hasMore = ref(false);
+const unreadCount = ref(0);
+const currentPage = ref(1);
 
 // Limpiar notificaciones si se borra el usuario del localStorage (logout)
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (event) => {
     if (event.key === 'user' && !event.newValue) {
       notifications.value = [];
+      unreadCount.value = 0;
+      hasMore.value = false;
     }
   });
 }
@@ -16,19 +22,21 @@ if (typeof window !== 'undefined') {
 export function useNotifications() {
   const fetchNotifications = async () => {
     const userEmail = localStorage.getItem('user') || null;
-    
+
     if (!userEmail) {
       notifications.value = [];
+      unreadCount.value = 0;
+      hasMore.value = false;
       return;
     }
-    
+
     loading.value = true;
     try {
-      // Limpiamos la lista antes de cargar para evitar que el usuario actual vea datos del anterior
-      notifications.value = []; 
-      
-      const res = await api.post('/notifications', { email: userEmail });
-      notifications.value = res.data;
+      const res = await api.post('/notifications', { page: 1 });
+      notifications.value = res.data.data;
+      currentPage.value = res.data.current_page;
+      hasMore.value = res.data.has_more;
+      unreadCount.value = res.data.unread_count;
     } catch (err) {
       console.error('Error fetching notifications:', err);
     } finally {
@@ -36,17 +44,34 @@ export function useNotifications() {
     }
   };
 
+  const loadMoreNotifications = async () => {
+    const userEmail = localStorage.getItem('user') || null;
+    if (!userEmail || loadingMore.value || !hasMore.value) return;
+
+    loadingMore.value = true;
+    try {
+      const nextPage = currentPage.value + 1;
+      const res = await api.post('/notifications', { page: nextPage });
+      notifications.value.push(...res.data.data);
+      currentPage.value = res.data.current_page;
+      hasMore.value = res.data.has_more;
+    } catch (err) {
+      console.error('Error loading more notifications:', err);
+    } finally {
+      loadingMore.value = false;
+    }
+  };
+
   const markOneAsRead = async (id) => {
     const userEmail = localStorage.getItem('user') || null;
     if (!userEmail) return;
     try {
-      await api.post('/notifications/read', { 
-        id: id,
-        email: userEmail 
-      });
-      // Actualizar estado local
+      await api.post('/notifications/read', { id: id });
       const notif = notifications.value.find(n => n.id === id);
-      if (notif) notif.is_read = true;
+      if (notif && !notif.is_read) {
+        notif.is_read = true;
+        unreadCount.value = Math.max(0, unreadCount.value - 1);
+      }
     } catch (err) {
       console.error('Error marking as read:', err);
     }
@@ -56,8 +81,9 @@ export function useNotifications() {
     const userEmail = localStorage.getItem('user') || null;
     if (!userEmail) return;
     try {
-      await api.post('/notifications/read-all', { email: userEmail });
+      await api.post('/notifications/read-all');
       notifications.value = notifications.value.map(n => ({ ...n, is_read: true }));
+      unreadCount.value = 0;
     } catch (err) {
       console.error('Error marking all as read:', err);
     }
@@ -72,17 +98,18 @@ export function useNotifications() {
       is_read: false,
       created_at: new Date().toISOString()
     });
+    unreadCount.value += 1;
   };
-
-  const unreadCount = computed(() => {
-    return notifications.value.filter(n => !n.is_read).length;
-  });
 
   return {
     notifications,
     loading,
+    loadingMore,
+    hasMore,
     unreadCount,
     fetchNotifications,
+    loadMoreNotifications,
+    markOneAsRead,
     markAllAsRead,
     addNotification
   };

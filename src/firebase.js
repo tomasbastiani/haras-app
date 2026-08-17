@@ -20,20 +20,20 @@ const app = initializeApp(firebaseConfig);
 const messaging = getMessaging(app);
 
 // Pedir permisos de notificacion a este navegador
-export const requestPushNotificationPermission = async (userEmail) => {
+export const requestPushNotificationPermission = async () => {
   try {
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
       // Necesitarás obtener la VAPID Key (Public Key) desde:
       // Project Settings -> Cloud Messaging -> Web Push certificates -> Generate key pair
-      const currentToken = await getToken(messaging, { 
-          vapidKey: "BG8EsnZ7EOy4gGjm_HF03L8xWNIPwBTYs-v7rID_mmWExCKC9ljRgvsZUyqF331HMpWJN-mR94zIJNOWZ81jAoI" 
+      const currentToken = await getToken(messaging, {
+          vapidKey: "BG8EsnZ7EOy4gGjm_HF03L8xWNIPwBTYs-v7rID_mmWExCKC9ljRgvsZUyqF331HMpWJN-mR94zIJNOWZ81jAoI"
       });
 
       if (currentToken) {
         console.log("Token FCM obtenido:", currentToken);
         // Enviar token al backend de Laravel
-        await sendTokenToServer(currentToken, userEmail);
+        await sendTokenToServer(currentToken);
       } else {
         console.log("No resulto obtener el token FCM.");
       }
@@ -45,13 +45,11 @@ export const requestPushNotificationPermission = async (userEmail) => {
   }
 };
 
-const sendTokenToServer = async (token, userEmail) => {
+const sendTokenToServer = async (token) => {
   try {
     // Usa la instancia de axios configurada en @/axios (baseURL ya incluye /api)
-    await api.post('/fcm-token', {
-      email: userEmail,
-      token: token
-    });
+    // El usuario se identifica por el Bearer token del request, no hace falta enviar el email.
+    await api.post('/fcm-token', { token: token });
     console.log("FCM Token registrado en la Base de Datos!");
   } catch (error) {
     console.error("Error enviando FCM token al backend:", error);

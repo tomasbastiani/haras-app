@@ -1,221 +1,204 @@
 <template>
   <div class="menu-container">
-    <h1 class="title">Bienvenido</h1>
-
-    <div class="cards">
-      <div class="card" @click="goToGastos">
-        <img src="@/assets/img/gcomunes.png" alt="Gastos Comunes" class="card-image" />
-        <h2 class="card-title">Gastos Comunes</h2>
-      </div>
-
-      <div class="card" @click="goToTurnero">
-        <img src="@/assets/img/reserva.png" alt="Turnero de Canchas" class="card-image" />
-        <h2 class="card-title">Turnero de Canchas</h2>
-      </div>
-
-      <div class="card" @click="goToTurneroAdmin" v-if="isAdmin">
-        <div class="card-icon-wrapper admin">
-          <v-icon size="56" color="white">mdi-clipboard-list</v-icon>
-        </div>
-        <h2 class="card-title">Administrar Turnos</h2>
-      </div>
-
-      <div class="card" @click="goToListadoGastos" v-if="isAdmin">
-        <img src="@/assets/img/listado.png" alt="Listado Total Gastos Comunes" class="card-image" />
-        <h2 class="card-title">Listado Total Gastos Comunes</h2>
-      </div>
-
-      <div class="card" @click="goToEditLote" v-if="isAdmin">
-        <img src="@/assets/img/lista-de-contactos.png" alt="Editar Usuario por Lote" class="card-image" />
-        <h2 class="card-title">Editar Usuarios por Lote</h2>
-      </div>
-
-      <div class="card" @click="goToProfile">
-        <img src="@/assets/img/profile.png" alt="Mi Perfil" class="card-image" />
-        <h2 class="card-title">Mi Perfil</h2>
-      </div>
-
-      <div class="card" @click="goToContact">
-        <img src="@/assets/img/contactos.png" alt="Contacto/Servicios" class="card-image" />
-        <h2 class="card-title">Contacto/Servicios</h2>
-      </div>
-
-      <div class="card" @click="goToFiles" v-if="!isAdmin">
-        <img src="@/assets/img/subir-flecha-arriba.png" alt="Adjuntar Archivos" class="card-image" />
-        <h2 class="card-title">Adjuntar Archivos</h2>
-      </div>
-
-      <div class="card" @click="goToViewFiles" v-if="isAdmin">
-        <img src="@/assets/img/subir-flecha-arriba.png" alt="Adjuntar Archivos" class="card-image" />
-        <h2 class="card-title">Ver Archivos</h2>
-      </div>
-
-      <div class="card" @click="goToSendEmail" v-if="isAdmin">
-        <img src="@/assets/img/correo-electronico.png" alt="Adjuntar Archivos" class="card-image" />
-        <h2 class="card-title">Enviar Email</h2>
-      </div>
-
-      <div class="card" @click="goToImportGastos" v-if="isAdmin">
-        <img src="@/assets/img/importar-archivo.png" alt="Importador Gastos Comunes Notificaciones" class="card-image" />
-        <h2 class="card-title">Importador Gastos Comunes Notificaciones</h2>
-      </div>
-
-      <div class="card" @click="goToImportMorosos" v-if="isAdmin">
-        <img src="@/assets/img/importar-archivo.png" alt="Importador Morosos" class="card-image" />
-        <h2 class="card-title">Importador Morosos</h2>
-      </div>
-
-      <div class="card" @click="goToNotifications" v-if="isAdmin">
-        <img src="@/assets/img/notificaciones.png" alt="Centro de Notificaciones" class="card-image" />
-        <h2 class="card-title">Centro de Notificaciones</h2>
-      </div>
-
+    <div class="title-row">
+      <h1 class="title">Bienvenido/a</h1>
+      <span v-if="displayName" class="user-chip">{{ displayName }}</span>
     </div>
+
+    <p class="section-label">General</p>
+    <div class="cards-grid">
+      <v-card
+        v-for="item in generalItems"
+        :key="item.fullTitle"
+        class="menu-card"
+        elevation="0"
+        rounded="lg"
+        @click="item.action"
+      >
+        <div class="card-icon-wrapper" :style="{ background: item.color }">
+          <v-icon size="30" color="white">{{ item.icon }}</v-icon>
+        </div>
+        <v-card-text class="card-title">{{ item.fullTitle }}</v-card-text>
+      </v-card>
+    </div>
+
+    <template v-if="isAdmin()">
+      <p class="section-label">Administración</p>
+      <div class="cards-grid">
+        <v-card
+          v-for="item in adminItems"
+          :key="item.fullTitle"
+          class="menu-card"
+          elevation="0"
+          rounded="lg"
+          @click="item.action"
+        >
+          <div class="card-icon-wrapper" :style="{ background: item.color }">
+            <v-icon size="30" color="white">{{ item.icon }}</v-icon>
+            <span v-if="item.badge" class="badge">{{ item.badge }}</span>
+          </div>
+          <v-card-text class="card-title">{{ item.fullTitle }}</v-card-text>
+        </v-card>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuth } from '@/composables/useAuth';
+import { useNotifications } from '@/composables/useNotifications';
 
 const router = useRouter();
-const isAdmin = ref(false);
+const { isAdmin, user, userName } = useAuth();
+const { unreadCount } = useNotifications();
 
-onMounted(() => {
-  isAdmin.value = !!localStorage.getItem('admin');
-});
+const displayName = computed(() => userName.value || user.value);
 
-const goToGastos = () => {
-  router.push('/gastos');
-};
+const GREEN = 'linear-gradient(135deg, #2ecc71, #1e8449)';
+const NAVY = 'linear-gradient(135deg, #2c3e50, #1a2733)';
 
-const goToTurnero = () => {
-  router.push('/turnero');
-};
+const generalItems = computed(() => [
+  { fullTitle: 'Gastos Comunes', icon: 'mdi-cash-multiple', color: GREEN, action: () => router.push('/gastos') },
+  // Turnero de Canchas: oculto para usuarios comunes por ahora. Para volver a
+  // habilitarlo a todos, quitar el `...(isAdmin() ? [...] : [])` y dejar el objeto suelto.
+  ...(isAdmin()
+    ? [{ fullTitle: 'Turnero de Canchas', icon: 'mdi-tennis', color: GREEN, action: () => router.push('/turnero') }]
+    : []),
+  { fullTitle: 'Mi Perfil', icon: 'mdi-account-circle-outline', color: GREEN, action: () => router.push('/mi-perfil') },
+  { fullTitle: 'Contacto/Servicios', icon: 'mdi-phone-in-talk-outline', color: GREEN, action: () => router.push('/contact-services') },
+  {
+    fullTitle: isAdmin() ? 'Ver Archivos' : 'Adjuntar Archivos',
+    icon: isAdmin() ? 'mdi-folder-open-outline' : 'mdi-file-upload-outline',
+    color: GREEN,
+    action: () => router.push('/files'),
+  },
+]);
 
-const goToTurneroAdmin = () => {
-  router.push('/turnero-admin');
-};
-
-const goToListadoGastos = () => {
-  router.push('/listado-gastos');
-};
-
-const goToContact = () => {
-  router.push('/contact-services');
-};
-
-const goToProfile = () => {
-  router.push('/mi-perfil');
-};
-
-const goToEditLote = () => {
-  router.push('/edit-users');
-};
-
-const goToFiles = () => {
-  router.push('/files');
-};
-
-const goToViewFiles = () => {
-  router.push('/files');
-};
-
-const goToSendEmail = () => {
-  router.push('/send-email');
-};
-
-const goToImportGastos = () => {
-  router.push('/import-gastos');
-};
-
-const goToImportMorosos = () => {
-  router.push('/import-morosos');
-};
-
-const goToNotifications = () => {
-  router.push('/notifications-center');
-};
-
+const adminItems = computed(() => [
+  { fullTitle: 'Administrar Turnos', icon: 'mdi-clipboard-list-outline', color: NAVY, action: () => router.push('/turnero-admin') },
+  { fullTitle: 'Listado Total Gastos Comunes', icon: 'mdi-format-list-bulleted', color: NAVY, action: () => router.push('/listado-gastos') },
+  { fullTitle: 'Editar Usuarios por Lote', icon: 'mdi-account-group-outline', color: NAVY, action: () => router.push('/edit-users') },
+  { fullTitle: 'Enviar Email', icon: 'mdi-email-send-outline', color: NAVY, action: () => router.push('/send-email') },
+  { fullTitle: 'Importador Gastos Comunes', icon: 'mdi-file-import-outline', color: NAVY, action: () => router.push('/import-gastos') },
+  { fullTitle: 'Importador Morosos', icon: 'mdi-file-alert-outline', color: NAVY, action: () => router.push('/import-morosos') },
+  {
+    fullTitle: 'Centro de Notificaciones',
+    icon: 'mdi-bell-ring-outline',
+    color: NAVY,
+    badge: unreadCount.value || null,
+    action: () => router.push('/notifications-center'),
+  },
+]);
 </script>
 
 <style scoped>
 .menu-container {
-  text-align: center;
-  margin-top: 5rem;
-  margin-bottom: 5rem;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 3rem 1rem 4rem;
+}
+
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-bottom: 2rem;
 }
 
 .title {
-  font-size: 2.5rem;
+  font-size: 2.2rem;
   color: #2c3e50;
-  margin-bottom: 3rem;
-}
-
-.cards {
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-
-.card {
-  background-color: #f9f9f9;
-  border-radius: 12px;
-  padding: 1.5rem;
-  width: 220px;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin: 0;
   text-align: center;
 }
 
-.card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+.user-chip {
+  font-family: inherit;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #27ae60;
 }
 
-.card-image {
-  width: 100%;
-  height: 140px;
-  object-fit: contain;
-  margin-bottom: 1rem;
+.section-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a8a8a;
+  margin: 2rem 0 1rem 0.25rem;
+}
+
+.section-label:first-of-type {
+  margin-top: 0;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .cards-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.menu-card {
+  background-color: #ffffff !important;
+  cursor: pointer;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08) !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.menu-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14) !important;
 }
 
 .card-icon-wrapper {
   position: relative;
-  width: 100%;
-  height: 140px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
-.card-icon-wrapper::before {
-  content: '';
+.badge {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ff8328, #e25822);
-  z-index: 0;
-}
-
-.card-icon-wrapper.admin::before {
-  background: linear-gradient(135deg, #2c3e50, #1a2733);
-}
-
-.card-icon-wrapper .v-icon {
-  position: relative;
-  z-index: 1;
+  top: -2px;
+  right: -2px;
+  background-color: #e53935;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid #ffffff;
 }
 
 .card-title {
-  font-size: 1.2rem;
+  font-size: 0.95rem;
   color: #2c3e50;
+  font-weight: 500;
+  line-height: 1.3;
+  padding: 0;
 }
 </style>
