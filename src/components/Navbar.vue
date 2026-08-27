@@ -97,7 +97,7 @@
               <template v-slot:prepend>
                 <v-icon size="32" color="white" class="mr-4">mdi-bullhorn-variant</v-icon>
               </template>
-              <v-card-title class="text-h5 font-weight-bold">{{ selectedNotification.title }}</v-card-title>
+              <v-card-title class="text-h5 font-weight-bold notif-modal-title">{{ selectedNotification.title }}</v-card-title>
               <template v-slot:append>
                 <v-btn icon="mdi-close" variant="text" color="white" @click="showDetail = false"></v-btn>
               </template>
@@ -337,6 +337,14 @@ const goToProfile = () => {
   overflow-y: auto;
 }
 
+/* Ensancha el panel aprovechando el espacio disponible, sin pasarse
+   del viewport en mobile. Va con !important porque min/max-width
+   llegan como estilo inline desde las props del v-card. */
+.notif-panel {
+  width: min(440px, calc(100vw - 24px)) !important;
+  max-width: min(440px, calc(100vw - 24px)) !important;
+}
+
 .notif-panel-header {
   display: flex;
   align-items: center;
@@ -387,11 +395,17 @@ const goToProfile = () => {
 }
 
 .notif-item-title {
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   color: #2c3e50;
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.25rem;
+  line-height: 1.3;
+  /* Contrarresta el overflow:hidden + ellipsis que Vuetify pone en
+     .v-list-item-title, para que el titulo pueda ocupar varias lineas. */
   white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
 }
 
 .notif-item-body {
@@ -435,6 +449,17 @@ const goToProfile = () => {
 .notif-modal-header {
   background: linear-gradient(135deg, #2c3e50, #1a2733);
   color: #fff;
+}
+
+/* Vuetify fuerza nowrap + ellipsis en .v-card-title: el titulo quedaba
+   cortado en una sola linea aunque sobrara espacio vertical. */
+.notif-modal-title {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+  padding-right: 0.5rem;
 }
 
 .notif-modal-btn {

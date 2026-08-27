@@ -17,6 +17,8 @@ import ImportMorosos from '@/components/ImportMorosos.vue';
 import NotificationsCenter from '@/components/NotificationsCenter.vue';
 import Turnero from '@/components/Turnero.vue';
 import TurneroAdmin from '@/components/TurneroAdmin.vue';
+import Paqueteria from '@/components/Paqueteria.vue';
+import PaqueteriaAdmin from '@/components/PaqueteriaAdmin.vue';
 
 const routes = [
   { path: '/', component: Home },
@@ -37,6 +39,10 @@ const routes = [
   { path: '/notifications-center', component: NotificationsCenter, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/turnero', component: Turnero, meta: { requiresAuth: true } },
   { path: '/turnero-admin', component: TurneroAdmin, meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: '/paqueteria', component: Paqueteria, meta: { requiresAuth: true } },
+  // Sin requiresAdmin: el operario de paquetería no es admin. El permiso lo
+  // resuelve el backend y la vista muestra el aviso si no lo tiene.
+  { path: '/paqueteria-oficina', component: PaqueteriaAdmin, meta: { requiresAuth: true } },
 ];
 
 const router = createRouter({

@@ -22,7 +22,9 @@
       </v-card>
     </div>
 
-    <template v-if="isAdmin()">
+    <!-- El operario de paquetería no es admin, pero su sección vive acá igual:
+         la lista de tarjetas ya viene filtrada por rol desde adminItems. -->
+    <template v-if="isAdmin() || esOperarioPaqueteria">
       <p class="section-label">Administración</p>
       <div class="cards-grid">
         <v-card
@@ -45,16 +47,30 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
 import { useNotifications } from '@/composables/useNotifications';
+import axios from '@/axios';
 
 const router = useRouter();
 const { isAdmin, user, userName } = useAuth();
 const { unreadCount } = useNotifications();
 
 const displayName = computed(() => userName.value || user.value);
+
+// El rol de operario de paquetería vive en su propia tabla, no en users.admin,
+// así que hay que preguntarlo. Si falla, simplemente no se muestra la sección.
+const esOperarioPaqueteria = ref(false);
+
+onMounted(async () => {
+  try {
+    const { data } = await axios.get('/paqueteria/acceso');
+    esOperarioPaqueteria.value = data.operario;
+  } catch (e) {
+    esOperarioPaqueteria.value = false;
+  }
+});
 
 const GREEN = 'linear-gradient(135deg, #2ecc71, #1e8449)';
 const NAVY = 'linear-gradient(135deg, #2c3e50, #1a2733)';
@@ -66,6 +82,7 @@ const generalItems = computed(() => [
   ...(isAdmin()
     ? [{ fullTitle: 'Turnero de Canchas', icon: 'mdi-tennis', color: GREEN, action: () => router.push('/turnero') }]
     : []),
+  { fullTitle: 'Mis Paquetes', icon: 'mdi-package-variant-closed', color: GREEN, action: () => router.push('/paqueteria') },
   { fullTitle: 'Mi Perfil', icon: 'mdi-account-circle-outline', color: GREEN, action: () => router.push('/mi-perfil') },
   { fullTitle: 'Contacto/Servicios', icon: 'mdi-phone-in-talk-outline', color: GREEN, action: () => router.push('/contact-services') },
   {
@@ -77,19 +94,28 @@ const generalItems = computed(() => [
 ]);
 
 const adminItems = computed(() => [
-  { fullTitle: 'Administrar Turnos', icon: 'mdi-clipboard-list-outline', color: NAVY, action: () => router.push('/turnero-admin') },
-  { fullTitle: 'Listado Total Gastos Comunes', icon: 'mdi-format-list-bulleted', color: NAVY, action: () => router.push('/listado-gastos') },
-  { fullTitle: 'Editar Usuarios por Lote', icon: 'mdi-account-group-outline', color: NAVY, action: () => router.push('/edit-users') },
-  { fullTitle: 'Enviar Email', icon: 'mdi-email-send-outline', color: NAVY, action: () => router.push('/send-email') },
-  { fullTitle: 'Importador Gastos Comunes', icon: 'mdi-file-import-outline', color: NAVY, action: () => router.push('/import-gastos') },
-  { fullTitle: 'Importador Morosos', icon: 'mdi-file-alert-outline', color: NAVY, action: () => router.push('/import-morosos') },
-  {
-    fullTitle: 'Centro de Notificaciones',
-    icon: 'mdi-bell-ring-outline',
-    color: NAVY,
-    badge: unreadCount.value || null,
-    action: () => router.push('/notifications-center'),
-  },
+  // Se muestra al operario de paquetería aunque no sea admin; el resto de la
+  // sección sigue siendo sólo para admins.
+  ...(esOperarioPaqueteria.value
+    ? [{ fullTitle: 'Oficina de Paquetería', icon: 'mdi-package-variant', color: NAVY, action: () => router.push('/paqueteria-oficina') }]
+    : []),
+  ...(isAdmin()
+    ? [
+        { fullTitle: 'Administrar Turnos', icon: 'mdi-clipboard-list-outline', color: NAVY, action: () => router.push('/turnero-admin') },
+        { fullTitle: 'Listado Total Gastos Comunes', icon: 'mdi-format-list-bulleted', color: NAVY, action: () => router.push('/listado-gastos') },
+        { fullTitle: 'Editar Usuarios por Lote', icon: 'mdi-account-group-outline', color: NAVY, action: () => router.push('/edit-users') },
+        { fullTitle: 'Enviar Email', icon: 'mdi-email-send-outline', color: NAVY, action: () => router.push('/send-email') },
+        { fullTitle: 'Importador Gastos Comunes', icon: 'mdi-file-import-outline', color: NAVY, action: () => router.push('/import-gastos') },
+        { fullTitle: 'Importador Morosos', icon: 'mdi-file-alert-outline', color: NAVY, action: () => router.push('/import-morosos') },
+        {
+          fullTitle: 'Centro de Notificaciones',
+          icon: 'mdi-bell-ring-outline',
+          color: NAVY,
+          badge: unreadCount.value || null,
+          action: () => router.push('/notifications-center'),
+        },
+      ]
+    : []),
 ]);
 </script>
 

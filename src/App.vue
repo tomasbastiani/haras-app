@@ -5,7 +5,10 @@
       <router-view />
     </main>
     <Footer />
-    
+
+    <!-- Asistente de reclamos (solo propietarios logueados) -->
+    <ChatWidget />
+
     <!-- Snackbar Global para Notificaciones Push -->
     <v-snackbar
       v-model="snackbar.show"
@@ -34,6 +37,7 @@
 import { onMounted, reactive } from 'vue';
 import Navbar from './components/Navbar.vue'
 import Footer from './components/Footer.vue'
+import ChatWidget from './components/ChatWidget.vue'
 import { listenForegroundMessages } from '@/firebase';
 import { useNotifications } from '@/composables/useNotifications'
 import { useAuth } from '@/composables/useAuth'
@@ -84,12 +88,26 @@ html, body, #app {
 }
 
 .main-content {
-  background: url('@/assets/img/fondo.jpg') no-repeat center center fixed;
-  background-size: cover;
   flex: 1;
   padding: 0;
   display: flex;
   flex-direction: column;
+
+  /* Fondo 100% CSS. Las capas se pintan de arriba hacia abajo:
+     la primera de la lista queda al frente. */
+  background-color: #e9ece5;
+  background-image:
+    /* 1. Trama en rombos: dos juegos de lineas finas a +-45 grados */
+    repeating-linear-gradient(45deg,
+      rgba(44, 62, 80, 0.055) 0 1px, transparent 1px 16px),
+    repeating-linear-gradient(-45deg,
+      rgba(44, 62, 80, 0.055) 0 1px, transparent 1px 16px),
+    /* 2. Halo verde de marca, arriba a la derecha */
+    radial-gradient(900px 600px at 88% -5%, rgba(39, 174, 96, 0.14), transparent 62%),
+    /* 3. Profundidad navy, abajo a la izquierda */
+    radial-gradient(800px 600px at 0% 105%, rgba(44, 62, 80, 0.12), transparent 65%),
+    /* 4. Degradado base (tomado de los colores de la foto original) */
+    linear-gradient(160deg, #d9dcd5 0%, #e9ece5 48%, #f2f4ee 100%);
 }
 
 @media (max-width: 480px) {
