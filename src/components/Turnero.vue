@@ -467,6 +467,9 @@ async function confirmarCancelacion() {
   flex-wrap: wrap;
 }
 
+/* Los chips van sobre fondo blanco fijo, así que el color de texto se declara
+   explícito: si se hereda, en modo oscuro el navegador lo pinta casi blanco
+   y el contenido queda invisible. */
 .date-chip {
   display: flex;
   flex-direction: column;
@@ -475,36 +478,47 @@ async function confirmarCancelacion() {
   padding: 0.6rem 0.4rem;
   border: 1px solid #e0e0e0;
   border-radius: 12px;
-  background: white;
+  background: #ffffff;
+  color: #2c3e50;
+  color-scheme: light;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-family: inherit;
 }
 
 .date-chip:hover {
   border-color: #ff8328;
 }
 
+.date-chip.active,
+.date-chip.active .date-dow,
+.date-chip.active .date-num,
+.date-chip.active .date-month {
+  color: #ffffff;
+}
+
 .date-chip.active {
   background: #ff8328;
   border-color: #ff8328;
-  color: white;
   box-shadow: 0 4px 10px rgba(255, 131, 40, 0.35);
 }
 
 .date-dow {
   font-size: 0.75rem;
   text-transform: uppercase;
-  opacity: 0.8;
+  color: #5a6b7a;
 }
 
 .date-num {
   font-size: 1.2rem;
   font-weight: 700;
+  color: #2c3e50;
 }
 
 .date-month {
   font-size: 0.75rem;
   text-transform: lowercase;
+  color: #5a6b7a;
 }
 
 /* Grid de canchas */
@@ -796,6 +810,22 @@ async function confirmarCancelacion() {
 
   .canchas-grid {
     width: 100%;
+  }
+
+  /* En mobile la tira de fechas se desliza en una sola fila en lugar de
+     apilarse en tres renglones. */
+  .date-strip {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    padding-bottom: 1rem;
+    scroll-snap-type: x proximity;
+  }
+
+  .date-chip {
+    flex: 0 0 auto;
+    min-width: 58px;
+    scroll-snap-align: start;
   }
 
   .floating-bar {

@@ -15,7 +15,8 @@
 
     <div class="tabs-wrapper">
       <v-tabs v-model="tab" background-color="#3f51b5" dark centered>
-        <v-tab value="lotes">Mis Lotes</v-tab>
+        <!-- La cuenta de portería no tiene lote: la pestaña quedaría vacía. -->
+        <v-tab v-if="!esPaqueteria" value="lotes">Mis Lotes</v-tab>
         <v-tab value="contrasenia">Cambiar Contraseña</v-tab>
       </v-tabs>
     </div>
@@ -242,6 +243,8 @@ const route = useRoute();
 const mustChangePassword = ref(!!localStorage.getItem('mustChangePassword'));
 
 const isAdmin = ref(false);
+// Cuenta dedicada de portería: sin lote, el perfil se reduce a la contraseña.
+const esPaqueteria = ref(!!localStorage.getItem('paqueteria'));
 const currentPassword = ref('');
 const newPassword = ref('');
 const confirmPassword = ref('');
@@ -300,7 +303,7 @@ onMounted(() => {
   isAdmin.value = !!localStorage.getItem('admin');
 
   // Si viene por query param, cambiamos la pestaña
-  if (route.query.tab === 'contrasenia') {
+  if (route.query.tab === 'contrasenia' || esPaqueteria.value) {
     tab.value = 'contrasenia'
   }
 

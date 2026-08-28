@@ -41,18 +41,18 @@
             </select>
           </div>
           <div class="campo">
-            <label>Ubicación en depósito</label>
-            <input v-model="alta.ubicacion" type="text" placeholder="Ej: Estante A3" />
-          </div>
-          <div class="campo">
             <label>Destinatario (según etiqueta)</label>
             <input v-model="alta.destinatario" type="text" />
           </div>
           <div class="campo">
-            <label>Tracking</label>
-            <input v-model="alta.tracking" type="text" />
+            <label>ID del correo</label>
+            <input v-model="alta.tracking" type="text" placeholder="Nº de seguimiento del correo" />
           </div>
         </div>
+
+        <!-- Foto del paquete. Es la prueba de en qué estado llegó: si después
+             aparece abierto o dañado, la discusión se resuelve mirando esto. -->
+        <FotoCaptura v-model="fotoAlta" label="Foto del paquete" />
 
         <div class="campo">
           <label>Observaciones</label>
@@ -79,7 +79,7 @@
       <!-- ============ BANDEJA ============ -->
       <div v-else>
         <div class="filtros">
-          <input v-model="filtroTexto" type="text" placeholder="Código, nombre, tracking o lote" @keyup.enter="cargar" />
+          <input v-model="filtroTexto" type="text" placeholder="Código, nombre, ID del correo o lote" @keyup.enter="cargar" />
           <select v-model="filtroEstado" @change="cargar">
             <option value="recibido">Para retirar</option>
             <option value="retirado">Retirados</option>
@@ -109,14 +109,20 @@
                 <th>Lote</th>
                 <th>Propietario</th>
                 <th>Correo</th>
-                <th>Ubicación</th>
-                <th>Ingreso</th>
                 <th>Estado</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="p in paquetes" :key="p.id">
+              <!-- La fila entera abre el detalle. El resto de los datos (tipo,
+                   ID del correo, fechas, fotos, firma y seguimiento) viven ahí:
+                   en la tabla sólo queda lo que sirve para encontrar el paquete. -->
+              <tr
+                v-for="p in paquetes"
+                :key="p.id"
+                class="fila-clickeable"
+                @click="abrirDetalle(p)"
+              >
                 <td class="mono col-codigo">{{ p.codigo }}</td>
                 <td data-label="Lote">{{ p.nlote }}</td>
                 <td data-label="Propietario">
@@ -126,19 +132,20 @@
                   </span>
                 </td>
                 <td data-label="Correo">{{ CORREOS[p.correo] || p.correo }}</td>
-                <td data-label="Ubicación">{{ p.ubicacion || '-' }}</td>
-                <td data-label="Ingreso">{{ formatearFecha(p.recibido_at) }}</td>
                 <td class="col-estado">
                   <span :class="['estado-badge', p.estado]">{{ ESTADOS[p.estado] }}</span>
                   <span v-if="p.entrega" :class="['solidez', solidez(p.entrega)]">
                     {{ solidezLabel(p.entrega) }}
                   </span>
                 </td>
-                <td :class="['acciones', { vacia: p.estado !== 'recibido' }]">
+                <!-- .stop en cada acción: si no, tocar un botón abriría además
+                     el detalle. -->
+                <td class="acciones">
                   <template v-if="p.estado === 'recibido'">
-                    <button class="link" @click="abrirEntrega(p)">Entregar</button>
-                    <button class="link gris" @click="abrirDevolucion(p)">Devolver</button>
+                    <button class="link" @click.stop="abrirEntrega(p)">Entregar</button>
+                    <button class="link gris" @click.stop="abrirDevolucion(p)">Devolver</button>
                   </template>
+                  <button class="link gris" @click.stop="abrirObservacion(p)">Observar</button>
                 </td>
               </tr>
             </tbody>
@@ -174,22 +181,24 @@
             <label>PIN que dicta quien retira *</label>
             <input
               v-model="entrega.pin"
-              class="pin-input"
+              :class="['pin-input', { invalido: errores.pin }]"
               type="text"
               inputmode="numeric"
               maxlength="6"
               placeholder="······"
             />
-            <p v-if="pinError" class="pin-error">{{ pinError }}</p>
+            <p v-if="errores.pin" class="campo-error">{{ errores.pin }}</p>
           </div>
 
           <div v-else class="campo">
             <label>Motivo de la entrega sin PIN *</label>
             <textarea
               v-model="entrega.motivo_manual"
+              :class="{ invalido: errores.motivo_manual }"
               rows="2"
               placeholder="Ej: el propietario no tiene el celular a mano"
             ></textarea>
+            <p v-if="errores.motivo_manual" class="campo-error">{{ errores.motivo_manual }}</p>
             <p class="aviso-manual">
               La entrega manual queda registrada como evidencia más débil y se
               revisa en los reportes.
@@ -208,7 +217,8 @@
           <div class="grid-2">
             <div class="campo">
               <label>Nombre y apellido *</label>
-              <input v-model="entrega.nombre" type="text" />
+              <input v-model="entrega.nombre" :class="{ invalido: errores.nombre }" type="text" />
+              <p v-if="errores.nombre" class="campo-error">{{ errores.nombre }}</p>
             </div>
             <div class="campo">
               <label>DNI</label>
@@ -220,14 +230,28 @@
             <label>Firma de quien retira *</label>
             <canvas
               ref="canvasFirma"
-              class="canvas-firma"
+              :class="['canvas-firma', { invalido: errores.firma }]"
               @pointerdown="empezarTrazo"
               @pointermove="dibujar"
               @pointerup="terminarTrazo"
               @pointerleave="terminarTrazo"
             ></canvas>
             <button class="link" type="button" @click="limpiarFirma">Borrar firma</button>
+            <p v-if="errores.firma" class="campo-error">{{ errores.firma }}</p>
           </div>
+
+          <!-- Foto del momento de la entrega. Va al acta junto con la firma:
+               deja constancia de quién se llevó qué y en qué estado. -->
+          <FotoCaptura
+            v-model="fotoEntrega"
+            label="Foto de la entrega *"
+            :error="errores.foto"
+          />
+
+          <!-- Errores que no son de un campo puntual (el paquete ya estaba
+               entregado, se cayó la red). Van acá adentro y no en la pantalla
+               de atrás, que el modal tapa. -->
+          <p v-if="errores.general" class="error-modal">{{ errores.general }}</p>
         </v-card-text>
 
         <v-card-actions>
@@ -240,13 +264,214 @@
       </v-card>
     </v-dialog>
 
+    <!-- ============ MODAL OBSERVACIÓN ============ -->
+    <v-dialog v-model="showObservacion" max-width="520px">
+      <v-card v-if="paqueteAObservar">
+        <v-card-title class="text-h6">
+          Observaciones de {{ paqueteAObservar.codigo }}
+        </v-card-title>
+
+        <v-card-text>
+          <p class="ayuda-obs">
+            Se suma al seguimiento del paquete y <strong>el propietario la va a ver</strong>.
+            Queda sellada en la bitácora: no se puede editar ni borrar después.
+          </p>
+
+          <!-- Las anteriores, para no repetir lo ya anotado. -->
+          <div v-if="cargandoObs" class="obs-cargando">Cargando observaciones…</div>
+          <div v-else-if="observaciones.length" class="obs-lista">
+            <div v-for="o in observaciones" :key="o.id" class="obs-item">
+              <p class="obs-texto">{{ o.nota }}</p>
+              <p class="obs-meta">
+                {{ formatearFecha(o.created_at) }}
+                <span v-if="o.por"> · {{ o.por }}</span>
+              </p>
+            </div>
+          </div>
+          <p v-else class="obs-vacio">Todavía no hay observaciones en este paquete.</p>
+
+          <v-textarea
+            v-model="notaObservacion"
+            label="Nueva observación *"
+            rows="3"
+            maxlength="500"
+            counter="500"
+          />
+
+          <p v-if="errorObservacion" class="foto-error">{{ errorObservacion }}</p>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text :disabled="guardandoObs" @click="showObservacion = false">Cerrar</v-btn>
+          <v-btn
+            color="green-darken-2"
+            :loading="guardandoObs"
+            :disabled="!notaObservacion.trim()"
+            @click="guardarObservacion"
+          >
+            Agregar al seguimiento
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- ============ MODAL DETALLE ============ -->
+    <v-dialog v-model="showDetalle" max-width="720px" scrollable>
+      <v-card v-if="detalle">
+        <v-card-title class="detalle-titulo">
+          <span class="mono">{{ detalle.codigo }}</span>
+          <span :class="['estado-badge', detalle.estado]">{{ ESTADOS[detalle.estado] }}</span>
+          <span v-if="detalle.entrega" :class="['solidez', solidez(detalle.entrega)]">
+            {{ solidezLabel(detalle.entrega) }}
+          </span>
+        </v-card-title>
+
+        <v-card-text class="detalle-body">
+          <div v-if="cargandoDetalle" class="spinner-mounted-container">
+            <span class="spinner-mounted"></span>
+          </div>
+
+          <template v-else>
+            <!-- ---- Datos del paquete ---- -->
+            <p class="detalle-seccion">Paquete</p>
+            <dl class="detalle-datos">
+              <div><dt>Lote</dt><dd>{{ detalle.nlote }}</dd></div>
+              <div>
+                <dt>Propietario</dt>
+                <dd>
+                  <span v-if="detalle.user">{{ detalle.user.nombre || detalle.user.email }}</span>
+                  <span v-else class="sin-prop">⚠ sin vincular</span>
+                </dd>
+              </div>
+              <div v-if="detalle.email_destino">
+                <dt>Email</dt><dd class="quiebre">{{ detalle.email_destino }}</dd>
+              </div>
+              <div v-if="detalle.destinatario">
+                <dt>Destinatario</dt><dd>{{ detalle.destinatario }}</dd>
+              </div>
+              <div><dt>Correo</dt><dd>{{ CORREOS[detalle.correo] || detalle.correo }}</dd></div>
+              <div><dt>Tipo</dt><dd>{{ TIPOS[detalle.tipo] || detalle.tipo }}</dd></div>
+              <div><dt>ID del correo</dt><dd class="quiebre">{{ detalle.tracking || '—' }}</dd></div>
+              <div><dt>Ubicación</dt><dd>{{ detalle.ubicacion || '—' }}</dd></div>
+              <div><dt>Ingreso</dt><dd>{{ formatearFecha(detalle.recibido_at) }}</dd></div>
+              <div v-if="detalle.notificado_at">
+                <dt>Aviso enviado</dt><dd>{{ formatearFecha(detalle.notificado_at) }}</dd>
+              </div>
+              <div v-if="detalle.recordatorio_at">
+                <dt>Recordatorio</dt><dd>{{ formatearFecha(detalle.recordatorio_at) }}</dd>
+              </div>
+              <div v-if="detalle.retirado_at">
+                <dt>Retirado</dt><dd>{{ formatearFecha(detalle.retirado_at) }}</dd>
+              </div>
+            </dl>
+
+            <div v-if="detalle.observaciones" class="detalle-obs-alta">
+              <span class="detalle-obs-label">Observaciones del ingreso</span>
+              {{ detalle.observaciones }}
+            </div>
+
+            <!-- ---- Acta de entrega ---- -->
+            <template v-if="detalle.entrega">
+              <p class="detalle-seccion">Acta de entrega</p>
+              <dl class="detalle-datos">
+                <div><dt>Folio</dt><dd class="mono">{{ detalle.entrega.folio }}</dd></div>
+                <div><dt>Método</dt><dd>{{ detalle.entrega.metodo === 'pin' ? 'Con PIN' : 'Manual' }}</dd></div>
+                <div v-if="detalle.entrega.motivo_manual">
+                  <dt>Motivo del manual</dt><dd>{{ detalle.entrega.motivo_manual }}</dd>
+                </div>
+                <div><dt>Quién retiró</dt><dd>{{ RETIRADO_POR[detalle.entrega.retirado_por] }}</dd></div>
+                <div><dt>Nombre</dt><dd>{{ detalle.entrega.nombre }}</dd></div>
+                <div v-if="detalle.entrega.dni"><dt>DNI</dt><dd>{{ detalle.entrega.dni }}</dd></div>
+                <div><dt>Fecha</dt><dd>{{ formatearFecha(detalle.entrega.entregado_at) }}</dd></div>
+                <div>
+                  <dt>Acuse del titular</dt>
+                  <dd>
+                    {{ ACKS[detalle.entrega.ack_estado] || detalle.entrega.ack_estado }}
+                    <span v-if="detalle.entrega.ack_at"> · {{ formatearFecha(detalle.entrega.ack_at) }}</span>
+                  </dd>
+                </div>
+              </dl>
+            </template>
+
+            <!-- ---- Constancias: fotos y firma ---- -->
+            <template v-if="tieneImagenes">
+              <p class="detalle-seccion">Constancias</p>
+              <div class="detalle-imagenes">
+                <figure v-if="imgIngreso">
+                  <img :src="imgIngreso" alt="Foto del ingreso" @click="ampliar(imgIngreso, 'Foto del ingreso')" />
+                  <figcaption>Foto del ingreso</figcaption>
+                </figure>
+                <figure v-if="imgEntrega">
+                  <img :src="imgEntrega" alt="Foto de la entrega" @click="ampliar(imgEntrega, 'Foto de la entrega')" />
+                  <figcaption>Foto de la entrega</figcaption>
+                </figure>
+                <figure v-if="imgFirma" class="figura-firma">
+                  <img :src="imgFirma" alt="Firma de quien retiró" @click="ampliar(imgFirma, 'Firma de quien retiró')" />
+                  <figcaption>Firma de {{ detalle.entrega?.nombre }}</figcaption>
+                </figure>
+              </div>
+              <p class="detalle-nota-img">Tocá una imagen para verla en grande.</p>
+            </template>
+
+            <!-- ---- Seguimiento, el mismo que ve el propietario ---- -->
+            <p class="detalle-seccion">Seguimiento</p>
+            <div class="timeline">
+              <div v-for="e in eventosDetalle" :key="e.id" class="evento">
+                <span class="punto"></span>
+                <div class="evento-cuerpo">
+                  <p class="evento-tipo">{{ EVENTOS[e.tipo] || e.tipo }}</p>
+                  <p v-if="e.nota" class="evento-nota">{{ e.nota }}</p>
+                  <p class="evento-fecha">
+                    {{ formatearFecha(e.created_at) }}
+                    <span v-if="e.por"> · {{ e.por }}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </template>
+        </v-card-text>
+
+        <v-card-actions class="detalle-acciones">
+          <template v-if="detalle.estado === 'recibido'">
+            <button class="link" @click="desdeDetalle(abrirEntrega)">Entregar</button>
+            <button class="link gris" @click="desdeDetalle(abrirDevolucion)">Devolver</button>
+          </template>
+          <button class="link gris" @click="desdeDetalle(abrirObservacion)">Observar</button>
+          <v-spacer />
+          <v-btn text @click="cerrarDetalle">Cerrar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- ============ IMAGEN AMPLIADA ============ -->
+    <v-dialog v-model="showImagen" max-width="900px">
+      <v-card>
+        <v-card-title class="text-h6">{{ imagenAmpliada.titulo }}</v-card-title>
+        <v-card-text>
+          <img :src="imagenAmpliada.url" :alt="imagenAmpliada.titulo" class="imagen-grande" />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="showImagen = false">Cerrar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- ============ MODAL DEVOLUCIÓN ============ -->
     <v-dialog v-model="showDevolucion" max-width="440px">
       <v-card v-if="paqueteADevolver">
         <v-card-title class="text-h6">Devolver {{ paqueteADevolver.codigo }}</v-card-title>
         <v-card-text>
           <p>El paquete se lo lleva el correo. Queda asentado en el seguimiento.</p>
-          <v-textarea v-model="motivoDevolucion" label="Motivo *" rows="2" maxlength="300" counter="300" />
+          <v-textarea
+            v-model="motivoDevolucion"
+            label="Motivo *"
+            rows="2"
+            maxlength="300"
+            counter="300"
+            :error-messages="errorDevolucion"
+          />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -264,6 +489,7 @@
 import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '@/axios';
+import FotoCaptura from '@/components/FotoCaptura.vue';
 
 const router = useRouter();
 const goBack = () => router.push('/menu');
@@ -282,6 +508,35 @@ const TIPOS = {
   caja_chica: 'Caja chica',
   caja_grande: 'Caja grande',
   bulto: 'Bulto',
+};
+
+const RETIRADO_POR = {
+  titular: 'El titular',
+  autorizado: 'Persona autorizada',
+  otro: 'Otro',
+};
+
+const ACKS = {
+  pendiente: 'Pendiente de respuesta',
+  confirmado: '✓ Confirmado por el titular',
+  desconocido: '⚠ El titular desconoce la entrega',
+  tacito: 'Cerrado sin respuesta (tácito)',
+};
+
+// Mismo timeline que ve el propietario, pero redactado en tercera persona: acá
+// lo lee la oficina, no el vecino.
+const EVENTOS = {
+  ingreso: 'Ingresó a paquetería',
+  notificado: 'Se avisó al propietario',
+  recordatorio: 'Se envió un recordatorio',
+  entregado: 'Entregado',
+  ack_confirmado: 'El propietario confirmó la recepción',
+  ack_desconocido: 'El propietario desconoció la entrega',
+  ack_tacito: 'Cerrado sin respuesta',
+  pin_fallido: 'Intento de PIN incorrecto',
+  observacion: 'Observación de la oficina',
+  devuelto: 'Devuelto al correo',
+  vencido: 'Vencido por falta de retiro',
 };
 
 const ESTADOS = {
@@ -303,7 +558,10 @@ const altaVacia = () => ({
   correo: 'mercadolibre',
   tracking: '',
   tipo: 'caja_chica',
-  ubicacion: '',
+  // Ya no se pide en pantalla: todos los paquetes se guardan en el mismo lugar.
+  // Se sigue mandando para no dejar el campo vacío en los registros nuevos ni
+  // romper la vista del vecino, que muestra dónde está el paquete.
+  ubicacion: 'Paquetería',
   observaciones: '',
 });
 const alta = reactive(altaVacia());
@@ -315,12 +573,13 @@ async function registrar() {
   mensajeError.value = '';
   altaResultado.value = null;
   try {
-    const { data } = await axios.post('/paquetes', { ...alta });
+    const { data } = await axios.post('/paquetes', {
+      ...alta,
+      foto: fotoAlta.value || null,
+    });
     altaResultado.value = data;
-    // La ubicación se mantiene: normalmente se cargan varios paquetes seguidos
-    // al mismo estante y volver a tipearla en cada uno hace perder tiempo.
-    const ubicacion = alta.ubicacion;
-    Object.assign(alta, altaVacia(), { ubicacion });
+    Object.assign(alta, altaVacia());
+    fotoAlta.value = '';
   } catch (e) {
     mensajeError.value = e.response?.data?.message || 'No pudimos registrar el paquete.';
   } finally {
@@ -328,7 +587,165 @@ async function registrar() {
   }
 }
 
-// ---------- Bandeja ----------
+// ---------- Fotos ----------
+// La captura, la compresión y el EXIF los resuelve FotoCaptura; acá sólo
+// viven los data URL que se mandan al backend.
+const fotoAlta = ref('');
+const fotoEntrega = ref('');
+
+// ---------- Observaciones ----------
+// Alimentan el mismo timeline sellado que ve el propietario, así que se traen
+// del detalle del paquete en vez de guardarse aparte.
+const showObservacion = ref(false);
+const paqueteAObservar = ref(null);
+const observaciones = ref([]);
+const cargandoObs = ref(false);
+const guardandoObs = ref(false);
+const notaObservacion = ref('');
+const errorObservacion = ref('');
+
+async function abrirObservacion(paquete) {
+  paqueteAObservar.value = paquete;
+  observaciones.value = [];
+  notaObservacion.value = '';
+  errorObservacion.value = '';
+  showObservacion.value = true;
+
+  cargandoObs.value = true;
+  try {
+    const { data } = await axios.get(`/paquetes/${paquete.id}`);
+    observaciones.value = data.eventos.filter((e) => e.tipo === 'observacion');
+  } catch (e) {
+    errorObservacion.value = 'No pudimos cargar las observaciones anteriores.';
+  } finally {
+    cargandoObs.value = false;
+  }
+}
+
+async function guardarObservacion() {
+  const nota = notaObservacion.value.trim();
+  if (!nota) return;
+
+  guardandoObs.value = true;
+  errorObservacion.value = '';
+  try {
+    const { data } = await axios.post(
+      `/paquetes/${paqueteAObservar.value.id}/observacion`,
+      { nota }
+    );
+    observaciones.value.push(data.evento);
+    notaObservacion.value = '';
+  } catch (e) {
+    errorObservacion.value =
+      e.response?.data?.errors?.nota?.[0] ||
+      e.response?.data?.message ||
+      'No pudimos guardar la observación.';
+  } finally {
+    guardandoObs.value = false;
+  }
+}
+
+// ---------- Detalle del paquete ----------
+// La tabla quedó con lo mínimo para encontrar el paquete; todo lo demás se
+// pide acá al abrir la fila. Es un request por apertura y no 200 al cargar la
+// bandeja, que es lo que costaría tener las imágenes en la tabla.
+const showDetalle = ref(false);
+const detalle = ref(null);
+const eventosDetalle = ref([]);
+const cargandoDetalle = ref(false);
+
+// Las imágenes van por endpoint autenticado, así que no se pueden poner en un
+// <img src>: se piden con el token y se arma un object URL.
+const imgIngreso = ref('');
+const imgEntrega = ref('');
+const imgFirma = ref('');
+
+const tieneImagenes = computed(() => !!(imgIngreso.value || imgEntrega.value || imgFirma.value));
+
+async function abrirDetalle(paquete) {
+  // Se muestra lo que ya tenemos de la fila para que el modal abra al instante,
+  // y se completa cuando responde el detalle.
+  detalle.value = paquete;
+  eventosDetalle.value = [];
+  liberarImagenes();
+  showDetalle.value = true;
+  cargandoDetalle.value = true;
+
+  try {
+    const { data } = await axios.get(`/paquetes/${paquete.id}`);
+    detalle.value = data.paquete;
+    eventosDetalle.value = data.eventos;
+    await cargarImagenes(data.paquete);
+  } catch (e) {
+    mensajeError.value = e.response?.data?.message || 'No pudimos abrir el detalle del paquete.';
+    showDetalle.value = false;
+  } finally {
+    cargandoDetalle.value = false;
+  }
+}
+
+/**
+ * Trae sólo las que existen: pedir una que no está devuelve 404 y ensuciaría
+ * la consola en cada apertura.
+ */
+async function cargarImagenes(paquete) {
+  const pedidos = [];
+
+  if (paquete.foto_path) {
+    pedidos.push(descargar(`/paquetes/${paquete.id}/foto`).then((u) => (imgIngreso.value = u)));
+  }
+  if (paquete.entrega?.tiene_foto) {
+    pedidos.push(descargar(`/paquetes/${paquete.id}/entrega-foto`).then((u) => (imgEntrega.value = u)));
+  }
+  if (paquete.entrega?.tiene_firma) {
+    pedidos.push(descargar(`/paquetes/${paquete.id}/firma`).then((u) => (imgFirma.value = u)));
+  }
+
+  await Promise.all(pedidos);
+}
+
+async function descargar(ruta) {
+  try {
+    const { data } = await axios.get(ruta, { responseType: 'blob' });
+    return URL.createObjectURL(data);
+  } catch (e) {
+    return '';
+  }
+}
+
+function liberarImagenes() {
+  [imgIngreso, imgEntrega, imgFirma].forEach((img) => {
+    if (img.value) URL.revokeObjectURL(img.value);
+    img.value = '';
+  });
+}
+
+function cerrarDetalle() {
+  showDetalle.value = false;
+  liberarImagenes();
+  detalle.value = null;
+  eventosDetalle.value = [];
+}
+
+/** Encadena una acción de la bandeja desde el detalle, cerrándolo primero. */
+function desdeDetalle(accion) {
+  const paquete = detalle.value;
+  cerrarDetalle();
+  accion(paquete);
+}
+
+// ---------- Imagen ampliada ----------
+// No revoca el object URL: la imagen sigue siendo del detalle, que es quien lo
+// creó y quien lo va a liberar al cerrarse.
+const showImagen = ref(false);
+const imagenAmpliada = ref({ url: '', titulo: '' });
+
+function ampliar(url, titulo) {
+  imagenAmpliada.value = { url, titulo };
+  showImagen.value = true;
+}
+
+// ---------- Bandeja ----------// ---------- Bandeja ----------
 const paquetes = ref([]);
 const filtroTexto = ref('');
 const filtroEstado = ref('recibido');
@@ -388,7 +805,6 @@ function formatearFecha(valor) {
 const showEntrega = ref(false);
 const paqueteAEntregar = ref(null);
 const entregando = ref(false);
-const pinError = ref('');
 const pinBloqueado = ref(false);
 const entrega = reactive({
   metodo: 'pin',
@@ -399,9 +815,26 @@ const entrega = reactive({
   dni: '',
 });
 
+// Un mensaje por campo. El error global de la pantalla no sirve acá: el modal
+// lo tapa y el operario no llega a ver qué le falta.
+const erroresVacios = () => ({
+  pin: '',
+  motivo_manual: '',
+  nombre: '',
+  firma: '',
+  foto: '',
+  general: '',
+});
+const errores = reactive(erroresVacios());
+
+function limpiarErrores() {
+  Object.assign(errores, erroresVacios());
+}
+
 function abrirEntrega(p) {
   paqueteAEntregar.value = p;
-  pinError.value = '';
+  fotoEntrega.value = '';
+  limpiarErrores();
   pinBloqueado.value = !!p.pin_bloqueado_at;
   Object.assign(entrega, {
     metodo: pinBloqueado.value ? 'manual' : 'pin',
@@ -417,48 +850,103 @@ function abrirEntrega(p) {
 function cerrarEntrega() {
   showEntrega.value = false;
   paqueteAEntregar.value = null;
+  fotoEntrega.value = '';
+  limpiarErrores();
+}
+
+/**
+ * Valida todo el formulario de una y devuelve si está en condiciones.
+ *
+ * Marca todos los campos que faltan, no sólo el primero: si faltan el nombre y
+ * la foto, mostrarlos de a uno obliga a mandar dos veces para enterarse.
+ */
+function validarEntrega() {
+  limpiarErrores();
+
+  if (entrega.metodo === 'pin' && !entrega.pin.trim()) {
+    errores.pin = 'Pedile el PIN a quien retira y escribilo acá.';
+  }
+
+  if (entrega.metodo === 'manual' && !entrega.motivo_manual.trim()) {
+    errores.motivo_manual = 'Explicá por qué se entrega sin PIN.';
+  }
+
+  if (!entrega.nombre.trim()) {
+    errores.nombre = 'Falta el nombre de quien retira.';
+  }
+
+  if (firmaVacia.value) {
+    errores.firma = 'Falta la firma de quien retira.';
+  }
+
+  if (!fotoEntrega.value) {
+    errores.foto = 'Sacá una foto de la entrega antes de confirmarla.';
+  }
+
+  return !Object.values(errores).some(Boolean);
 }
 
 async function confirmarEntrega() {
-  mensajeError.value = '';
-  pinError.value = '';
-
-  if (!entrega.nombre.trim()) {
-    mensajeError.value = 'Falta el nombre de quien retira.';
-    return;
-  }
-  if (firmaVacia.value) {
-    mensajeError.value = 'Falta la firma de quien retira.';
-    return;
-  }
+  if (!validarEntrega()) return;
 
   entregando.value = true;
   try {
     await axios.post(`/paquetes/${paqueteAEntregar.value.id}/entregar`, {
       ...entrega,
       firma: canvasFirma.value.toDataURL('image/png'),
+      foto: fotoEntrega.value,
     });
     cerrarEntrega();
     await cargar();
   } catch (e) {
-    const data = e.response?.data;
-    if (e.response?.status === 422 && data?.bloqueado !== undefined) {
-      pinError.value = data.message;
-      if (data.bloqueado) {
-        pinBloqueado.value = true;
-        entrega.metodo = 'manual';
-        entrega.motivo_manual = 'PIN bloqueado por intentos fallidos';
-      }
-    } else if (e.response?.status === 423) {
-      pinBloqueado.value = true;
-      entrega.metodo = 'manual';
-      pinError.value = data.message;
-    } else {
-      mensajeError.value = data?.message || 'No pudimos registrar la entrega.';
-    }
+    manejarErrorEntrega(e);
   } finally {
     entregando.value = false;
   }
+}
+
+/** Traduce la respuesta del backend a los mismos campos del formulario. */
+function manejarErrorEntrega(e) {
+  const data = e.response?.data;
+  const status = e.response?.status;
+
+  // PIN incorrecto: el backend contesta 422 con el contador de intentos.
+  if (status === 422 && data?.bloqueado !== undefined) {
+    errores.pin = data.message;
+    if (data.bloqueado) {
+      pinBloqueado.value = true;
+      entrega.metodo = 'manual';
+      entrega.motivo_manual = 'PIN bloqueado por intentos fallidos';
+    }
+    return;
+  }
+
+  // PIN ya bloqueado de antes.
+  if (status === 423) {
+    pinBloqueado.value = true;
+    entrega.metodo = 'manual';
+    errores.pin = data.message;
+    return;
+  }
+
+  // Validación de Laravel: cada clave es el nombre del campo.
+  if (status === 422 && data?.errors) {
+    let ubicado = false;
+    Object.entries(data.errors).forEach(([campo, mensajes]) => {
+      if (campo in errores && campo !== 'general') {
+        errores[campo] = mensajes[0];
+        ubicado = true;
+      }
+    });
+    // Un campo que el formulario no muestra (dni, retirado_por) igual tiene que
+    // verse en algún lado.
+    if (!ubicado) {
+      errores.general = Object.values(data.errors)[0][0];
+    }
+    return;
+  }
+
+  errores.general = data?.message || 'No pudimos registrar la entrega.';
 }
 
 // ---------- Firma ----------
@@ -538,16 +1026,24 @@ const showDevolucion = ref(false);
 const paqueteADevolver = ref(null);
 const motivoDevolucion = ref('');
 const devolviendo = ref(false);
+const errorDevolucion = ref('');
 
 function abrirDevolucion(p) {
   paqueteADevolver.value = p;
   motivoDevolucion.value = '';
+  errorDevolucion.value = '';
   showDevolucion.value = true;
 }
 
 async function confirmarDevolucion() {
-  if (!motivoDevolucion.value.trim()) return;
+  // Antes no decía nada y el botón parecía no responder.
+  if (!motivoDevolucion.value.trim()) {
+    errorDevolucion.value = 'Escribí el motivo de la devolución.';
+    return;
+  }
+
   devolviendo.value = true;
+  errorDevolucion.value = '';
   try {
     await axios.post(`/paquetes/${paqueteADevolver.value.id}/devolver`, {
       motivo: motivoDevolucion.value,
@@ -555,7 +1051,11 @@ async function confirmarDevolucion() {
     showDevolucion.value = false;
     await cargar();
   } catch (e) {
-    mensajeError.value = e.response?.data?.message || 'No pudimos registrar la devolución.';
+    // Dentro del modal, por el mismo motivo que en el de entrega.
+    errorDevolucion.value =
+      e.response?.data?.errors?.motivo?.[0] ||
+      e.response?.data?.message ||
+      'No pudimos registrar la devolución.';
   } finally {
     devolviendo.value = false;
   }
@@ -1007,10 +1507,6 @@ onMounted(cargar);
     margin-top: 0.35rem;
   }
 
-  .tabla td.acciones.vacia {
-    display: none;
-  }
-
   .tabla td.acciones .link {
     flex: 1;
     border: 1px solid #2980b9;
@@ -1045,5 +1541,280 @@ onMounted(cargar);
 
 @keyframes girar {
   to { transform: rotate(360deg); }
+}
+
+/* ===== Foto del paquete ===== */
+
+
+.foto-error {
+  color: #c0392b;
+  font-size: 0.8rem;
+  margin-top: 0.4rem;
+}
+
+
+/* ===== Observaciones ===== */
+
+.ayuda-obs {
+  color: #5a6b7a;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin-bottom: 0.9rem;
+}
+
+.obs-cargando,
+.obs-vacio {
+  color: #8a8a8a;
+  font-size: 0.85rem;
+  margin-bottom: 0.9rem;
+}
+
+.obs-lista {
+  max-height: 210px;
+  overflow-y: auto;
+  margin-bottom: 0.9rem;
+  border: 1px solid #eceeed;
+  border-radius: 8px;
+}
+
+.obs-item {
+  padding: 0.6rem 0.7rem;
+  border-bottom: 1px solid #f2f4f3;
+}
+
+.obs-item:last-child {
+  border-bottom: none;
+}
+
+.obs-texto {
+  font-size: 0.88rem;
+  color: #2c3e50;
+  line-height: 1.45;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.obs-meta {
+  font-size: 0.72rem;
+  color: #9aa5ad;
+  margin: 0.25rem 0 0;
+}
+
+/* ===== Detalle del paquete ===== */
+
+.fila-clickeable {
+  cursor: pointer;
+}
+
+.fila-clickeable:hover {
+  background-color: #f7faf8;
+}
+
+.detalle-titulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.detalle-body {
+  min-height: 200px;
+}
+
+.detalle-seccion {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #8a8a8a;
+  margin: 1.25rem 0 0.55rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid #eceeed;
+}
+
+.detalle-seccion:first-child {
+  margin-top: 0;
+}
+
+.detalle-datos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem 1rem;
+  margin: 0;
+}
+
+@media (max-width: 560px) {
+  .detalle-datos {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detalle-datos dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9aa5ad;
+  margin-bottom: 0.1rem;
+}
+
+.detalle-datos dd {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #2c3e50;
+}
+
+.quiebre {
+  overflow-wrap: anywhere;
+}
+
+.detalle-obs-alta {
+  margin-top: 0.9rem;
+  background: #fbfbfa;
+  border: 1px solid #eceeed;
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.87rem;
+  color: #2c3e50;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.detalle-obs-label {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9aa5ad;
+  margin-bottom: 0.2rem;
+}
+
+.detalle-imagenes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.detalle-imagenes figure {
+  margin: 0;
+}
+
+.detalle-imagenes img {
+  display: block;
+  width: 100%;
+  height: 170px;
+  object-fit: contain;
+  background: #f5f5f4;
+  border: 1px solid #eceeed;
+  border-radius: 8px;
+  cursor: zoom-in;
+}
+
+/* La firma es un trazo sobre blanco: sobre gris se ve sucia. */
+.figura-firma img {
+  background: #fff;
+  object-fit: contain;
+}
+
+.detalle-imagenes figcaption {
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  color: #8a8a8a;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.detalle-nota-img {
+  margin: 0.5rem 0 0;
+  font-size: 0.73rem;
+  color: #9aa5ad;
+}
+
+.detalle-acciones {
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.imagen-grande {
+  display: block;
+  width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+  background: #f5f5f4;
+  border-radius: 8px;
+}
+
+/* ===== Timeline (mismo lenguaje visual que la vista del propietario) ===== */
+
+.timeline {
+  margin-top: 0.5rem;
+  padding-left: 0.4rem;
+  border-left: 2px solid #e4e7e6;
+}
+
+.evento {
+  position: relative;
+  padding: 0.4rem 0 0.4rem 1rem;
+}
+
+.punto {
+  position: absolute;
+  left: -6px;
+  top: 0.75rem;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #27ae60;
+  border: 2px solid #fff;
+}
+
+.evento-tipo {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.evento-nota {
+  margin: 0.1rem 0 0;
+  font-size: 0.82rem;
+  color: #555;
+  overflow-wrap: anywhere;
+}
+
+.evento-fecha {
+  margin: 0.1rem 0 0;
+  font-size: 0.75rem;
+  color: #8a8a8a;
+}
+
+/* ===== Errores de validación dentro de los modales ===== */
+
+.campo-error {
+  margin: 0.3rem 0 0;
+  color: #c0392b;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* El borde marca el campo aunque el mensaje quede fuera de la vista al hacer
+   scroll dentro del modal. */
+.campo input.invalido,
+.campo textarea.invalido,
+.canvas-firma.invalido {
+  border-color: #e08a7d;
+  background-color: #fdf6f5;
+}
+
+.error-modal {
+  margin: 1rem 0 0;
+  background: #fdecea;
+  color: #c0392b;
+  border-radius: 8px;
+  padding: 0.65rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 </style>

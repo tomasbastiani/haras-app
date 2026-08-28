@@ -71,16 +71,23 @@ const handleLogin = async () => {
     const userEmail = response.data.user.email
     const userName = response.data.user.nombre
     const admin = response.data.user.admin === 1
+    // Cuenta dedicada de portería: el login ya devuelve el usuario entero, así
+    // que el flag viaja acá y no hace falta un request extra.
+    const esPaqueteria = !!response.data.user.paqueteria
     const mustChangePassword = response.data.must_change_password === true
     const token = response.data.token
 
-    login(userEmail, admin, mustChangePassword, userName, token)
+    login(userEmail, admin, mustChangePassword, userName, token, esPaqueteria)
 
     // Solicitar permisos FCM en segundo plano sin interrumpir la navegacion
     requestPushNotificationPermission()
 
     if (mustChangePassword) {
       router.push('/mi-perfil?tab=contrasenia')
+    } else if (esPaqueteria) {
+      // No tiene lote ni gastos: el menú general no le dice nada, va derecho a
+      // su puesto de trabajo.
+      router.push('/paqueteria-oficina')
     } else {
       router.push('/menu')
     }

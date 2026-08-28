@@ -19,6 +19,7 @@ import Turnero from '@/components/Turnero.vue';
 import TurneroAdmin from '@/components/TurneroAdmin.vue';
 import Paqueteria from '@/components/Paqueteria.vue';
 import PaqueteriaAdmin from '@/components/PaqueteriaAdmin.vue';
+import PaqueteriaUsuarios from '@/components/PaqueteriaUsuarios.vue';
 
 const routes = [
   { path: '/', component: Home },
@@ -43,7 +44,13 @@ const routes = [
   // Sin requiresAdmin: el operario de paquetería no es admin. El permiso lo
   // resuelve el backend y la vista muestra el aviso si no lo tiene.
   { path: '/paqueteria-oficina', component: PaqueteriaAdmin, meta: { requiresAuth: true } },
+  { path: '/paqueteria-usuarios', component: PaqueteriaUsuarios, meta: { requiresAuth: true, requiresAdmin: true } },
 ];
+
+// Lo único que puede ver una cuenta de portería. `/menu` entra porque el menú
+// ya le viene recortado a estas mismas dos secciones, y `/mi-perfil` porque
+// tiene que poder cambiar su contraseña.
+const RUTAS_PAQUETERIA = ['/paqueteria-oficina', '/mi-perfil', '/menu'];
 
 const router = createRouter({
   history: createWebHistory(),//createWebHistory('/test/'),//createWebHistory(),
@@ -53,10 +60,11 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const user = localStorage.getItem('user');
   const admin = localStorage.getItem('admin');
+  const paqueteria = localStorage.getItem('paqueteria');
 
   // Si intenta ir a /login estando logueado, lo mandamos al menú
   if (to.path === '/login' && user) {
-    return next('/menu');
+    return next(paqueteria ? '/paqueteria-oficina' : '/menu');
   }
 
   // Si necesita estar logueado y no lo está, lo redirige a /login
@@ -68,6 +76,13 @@ router.beforeEach((to, from, next) => {
   const mustChangePassword = localStorage.getItem('mustChangePassword');
   if (user && mustChangePassword && to.path !== '/mi-perfil') {
     return next('/mi-perfil?tab=contrasenia');
+  }
+
+  // Cuenta de portería: sólo su oficina y su perfil. Esto es UX, no seguridad
+  // —el permiso real lo chequea cada endpoint del backend—, pero evita que se
+  // meta por URL a secciones que no le sirven y le muestran datos vacíos.
+  if (user && paqueteria && !RUTAS_PAQUETERIA.includes(to.path)) {
+    return next('/paqueteria-oficina');
   }
 
   // Si necesita permisos de admin y no los tiene

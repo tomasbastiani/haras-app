@@ -30,6 +30,12 @@
           <p v-if="p.destinatario"><strong>A nombre de:</strong> {{ p.destinatario }}</p>
         </div>
 
+        <!-- Foto que le sacó la oficina al recibirlo: sirve para reconocerlo y
+             para ver en qué estado llegó. -->
+        <button v-if="p.foto_path" class="btn-ver-foto" @click="verFoto(p)">
+          📷 Ver foto del paquete
+        </button>
+
         <!-- PIN de retiro: sólo mientras el paquete siga en la oficina -->
         <div v-if="p.estado === 'recibido' && p.pin" class="pin-box">
           <p class="pin-label">PIN de retiro</p>
@@ -50,6 +56,10 @@
             <span v-if="p.entrega.dni"> (DNI {{ p.entrega.dni }})</span>
             · Acta {{ p.entrega.folio }}
           </p>
+
+          <button v-if="p.entrega.tiene_foto" class="btn-ver-foto" @click="verFoto(p, 'entrega')">
+            📷 Ver foto de la entrega
+          </button>
 
           <div v-if="p.entrega.ack_estado === 'pendiente'" class="ack-acciones">
             <p class="ack-pregunta">¿Reconocés esta entrega?</p>
@@ -101,6 +111,23 @@
     <p v-if="mensajeError" class="error-message">{{ mensajeError }}</p>
 
     <!-- Desconocer una entrega es un hecho serio: pedimos confirmación y motivo -->
+    <v-dialog v-model="showFoto" max-width="520px">
+      <v-card>
+        <v-card-title class="text-h6">{{ tituloFoto }}</v-card-title>
+        <v-card-text class="foto-modal-body">
+          <div v-if="cargandoFoto" class="spinner-mounted-container">
+            <span class="spinner-mounted"></span>
+          </div>
+          <img v-else-if="fotoUrl" :src="fotoUrl" alt="Foto del paquete" class="foto-modal-img" />
+          <p v-else class="foto-modal-error">No pudimos cargar la foto.</p>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="cerrarFoto">Cerrar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-dialog v-model="showDesconocer" max-width="460px">
       <v-card>
         <v-card-title class="text-h6">¿Desconocés esta entrega?</v-card-title>
@@ -152,6 +179,46 @@ const procesandoId = ref(null);
 const mensajeExito = ref('');
 const mensajeError = ref('');
 
+// La foto va por endpoint autenticado, así que no se puede poner directo en un
+// <img src>: se pide con el token y se arma un object URL al abrir el modal.
+const showFoto = ref(false);
+const paqueteFoto = ref(null);
+const fotoUrl = ref('');
+const cargandoFoto = ref(false);
+
+// `cual` distingue la foto del ingreso de la del momento de la entrega: son
+// dos endpoints distintos y el vecino puede querer ver cualquiera de las dos.
+const tituloFoto = ref('');
+
+async function verFoto(paquete, cual = 'ingreso') {
+  paqueteFoto.value = paquete;
+  tituloFoto.value = cual === 'entrega'
+    ? `Foto de la entrega · ${paquete.codigo}`
+    : `Foto de ${paquete.codigo}`;
+  fotoUrl.value = '';
+  showFoto.value = true;
+  cargandoFoto.value = true;
+
+  const ruta = cual === 'entrega'
+    ? `/paquetes/${paquete.id}/entrega-foto`
+    : `/paquetes/${paquete.id}/foto`;
+
+  try {
+    const { data } = await axios.get(ruta, { responseType: 'blob' });
+    fotoUrl.value = URL.createObjectURL(data);
+  } catch (e) {
+    fotoUrl.value = '';
+  } finally {
+    cargandoFoto.value = false;
+  }
+}
+
+function cerrarFoto() {
+  if (fotoUrl.value) URL.revokeObjectURL(fotoUrl.value);
+  fotoUrl.value = '';
+  showFoto.value = false;
+}
+
 const showDesconocer = ref(false);
 const paqueteADesconocer = ref(null);
 const motivoDesconocer = ref('');
@@ -188,6 +255,7 @@ const EVENTOS = {
   ack_desconocido: 'Desconociste la entrega',
   ack_tacito: 'Cerrado sin respuesta',
   pin_fallido: 'Intento de PIN incorrecto',
+  observacion: 'Observación de la oficina',
   devuelto: 'Devuelto al correo',
   vencido: 'Vencido por falta de retiro',
 };
@@ -561,5 +629,42 @@ onMounted(cargarPaquetes);
 
 @keyframes girar {
   to { transform: rotate(360deg); }
+}
+
+/* ===== Foto del paquete ===== */
+
+.btn-ver-foto {
+  background: #fff;
+  border: 1px solid #dde3e1;
+  border-radius: 8px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #2c3e50;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+
+.btn-ver-foto:active {
+  background: #f0f3f1;
+}
+
+.foto-modal-body {
+  min-height: 160px;
+}
+
+.foto-modal-img {
+  display: block;
+  width: 100%;
+  max-height: 65vh;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #f5f5f4;
+}
+
+.foto-modal-error {
+  color: #c0392b;
+  font-size: 0.85rem;
 }
 </style>

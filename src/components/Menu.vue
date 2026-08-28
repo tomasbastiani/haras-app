@@ -13,7 +13,7 @@
         class="menu-card"
         elevation="0"
         rounded="lg"
-        @click="item.action"
+        @click="router.push(item.to)"
       >
         <div class="card-icon-wrapper" :style="{ background: item.color }">
           <v-icon size="30" color="white">{{ item.icon }}</v-icon>
@@ -24,7 +24,7 @@
 
     <!-- El operario de paquetería no es admin, pero su sección vive acá igual:
          la lista de tarjetas ya viene filtrada por rol desde adminItems. -->
-    <template v-if="isAdmin() || esOperarioPaqueteria">
+    <template v-if="mostrarAdmin">
       <p class="section-label">Administración</p>
       <div class="cards-grid">
         <v-card
@@ -33,7 +33,7 @@
           class="menu-card"
           elevation="0"
           rounded="lg"
-          @click="item.action"
+          @click="router.push(item.to)"
         >
           <div class="card-icon-wrapper" :style="{ background: item.color }">
             <v-icon size="30" color="white">{{ item.icon }}</v-icon>
@@ -47,76 +47,18 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
-import { useNotifications } from '@/composables/useNotifications';
-import axios from '@/axios';
+import { useMenuItems } from '@/composables/useMenuItems';
 
 const router = useRouter();
-const { isAdmin, user, userName } = useAuth();
-const { unreadCount } = useNotifications();
+const { user, userName } = useAuth();
+const { generalItems, adminItems, mostrarAdmin, cargarAcceso } = useMenuItems();
 
 const displayName = computed(() => userName.value || user.value);
 
-// El rol de operario de paquetería vive en su propia tabla, no en users.admin,
-// así que hay que preguntarlo. Si falla, simplemente no se muestra la sección.
-const esOperarioPaqueteria = ref(false);
-
-onMounted(async () => {
-  try {
-    const { data } = await axios.get('/paqueteria/acceso');
-    esOperarioPaqueteria.value = data.operario;
-  } catch (e) {
-    esOperarioPaqueteria.value = false;
-  }
-});
-
-const GREEN = 'linear-gradient(135deg, #2ecc71, #1e8449)';
-const NAVY = 'linear-gradient(135deg, #2c3e50, #1a2733)';
-
-const generalItems = computed(() => [
-  { fullTitle: 'Gastos Comunes', icon: 'mdi-cash-multiple', color: GREEN, action: () => router.push('/gastos') },
-  // Turnero de Canchas: oculto para usuarios comunes por ahora. Para volver a
-  // habilitarlo a todos, quitar el `...(isAdmin() ? [...] : [])` y dejar el objeto suelto.
-  ...(isAdmin()
-    ? [{ fullTitle: 'Turnero de Canchas', icon: 'mdi-tennis', color: GREEN, action: () => router.push('/turnero') }]
-    : []),
-  { fullTitle: 'Mis Paquetes', icon: 'mdi-package-variant-closed', color: GREEN, action: () => router.push('/paqueteria') },
-  { fullTitle: 'Mi Perfil', icon: 'mdi-account-circle-outline', color: GREEN, action: () => router.push('/mi-perfil') },
-  { fullTitle: 'Contacto/Servicios', icon: 'mdi-phone-in-talk-outline', color: GREEN, action: () => router.push('/contact-services') },
-  {
-    fullTitle: isAdmin() ? 'Ver Archivos' : 'Adjuntar Archivos',
-    icon: isAdmin() ? 'mdi-folder-open-outline' : 'mdi-file-upload-outline',
-    color: GREEN,
-    action: () => router.push('/files'),
-  },
-]);
-
-const adminItems = computed(() => [
-  // Se muestra al operario de paquetería aunque no sea admin; el resto de la
-  // sección sigue siendo sólo para admins.
-  ...(esOperarioPaqueteria.value
-    ? [{ fullTitle: 'Oficina de Paquetería', icon: 'mdi-package-variant', color: NAVY, action: () => router.push('/paqueteria-oficina') }]
-    : []),
-  ...(isAdmin()
-    ? [
-        { fullTitle: 'Administrar Turnos', icon: 'mdi-clipboard-list-outline', color: NAVY, action: () => router.push('/turnero-admin') },
-        { fullTitle: 'Listado Total Gastos Comunes', icon: 'mdi-format-list-bulleted', color: NAVY, action: () => router.push('/listado-gastos') },
-        { fullTitle: 'Editar Usuarios por Lote', icon: 'mdi-account-group-outline', color: NAVY, action: () => router.push('/edit-users') },
-        { fullTitle: 'Enviar Email', icon: 'mdi-email-send-outline', color: NAVY, action: () => router.push('/send-email') },
-        { fullTitle: 'Importador Gastos Comunes', icon: 'mdi-file-import-outline', color: NAVY, action: () => router.push('/import-gastos') },
-        { fullTitle: 'Importador Morosos', icon: 'mdi-file-alert-outline', color: NAVY, action: () => router.push('/import-morosos') },
-        {
-          fullTitle: 'Centro de Notificaciones',
-          icon: 'mdi-bell-ring-outline',
-          color: NAVY,
-          badge: unreadCount.value || null,
-          action: () => router.push('/notifications-center'),
-        },
-      ]
-    : []),
-]);
+onMounted(cargarAcceso);
 </script>
 
 <style scoped>
@@ -162,15 +104,17 @@ const adminItems = computed(() => [
   margin-top: 0;
 }
 
+/* Mobile: dos tarjetas por fila aprovechando todo el ancho. */
 .cards-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
 @media (min-width: 768px) {
   .cards-grid {
     grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
   }
 }
 
@@ -226,5 +170,51 @@ const adminItems = computed(() => [
   font-weight: 500;
   line-height: 1.3;
   padding: 0;
+}
+
+/* Ajustes finos sólo para la app mobile: tarjetas más compactas para que
+   entren dos por fila sin que el texto se corte. */
+@media (max-width: 767px) {
+  .menu-container {
+    padding: 1.5rem 0.85rem 3rem;
+  }
+
+  .title-row {
+    margin-bottom: 1.25rem;
+  }
+
+  .title {
+    font-size: 1.6rem;
+  }
+
+  .user-chip {
+    font-size: 1.1rem;
+  }
+
+  .section-label {
+    margin: 1.5rem 0 0.65rem 0.15rem;
+  }
+
+  .menu-card {
+    padding: 1rem 0.5rem;
+    justify-content: flex-start;
+    min-height: 132px;
+  }
+
+  .card-icon-wrapper {
+    width: 52px;
+    height: 52px;
+    margin-bottom: 0.55rem;
+  }
+
+  .card-icon-wrapper :deep(.v-icon) {
+    font-size: 26px !important;
+  }
+
+  .card-title {
+    font-size: 0.82rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
 }
 </style>

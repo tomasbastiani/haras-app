@@ -51,30 +51,44 @@
     <!-- Tabla de archivos (la ven todos; el admin ve solo esto) -->
     <div class="table-wrapper">
       <!-- 🔍 Filtros -->
-      <div class="filters">
+      <!-- En mobile se pliegan detrás de un botón para no comerse la pantalla;
+           en desktop se muestran siempre, como hasta ahora. -->
+      <div v-if="isMobileView" class="filters-bar">
+        <button class="filters-toggle" type="button" @click="showFilters = !showFilters">
+          <i class="fas fa-filter"></i>
+          <span>Filtros</span>
+          <span v-if="activeFilters" class="filters-count">{{ activeFilters }}</span>
+          <span class="filters-chevron" :class="{ open: showFilters }">▾</span>
+        </button>
+        <button v-if="activeFilters" class="filters-clear" type="button" @click="limpiarFiltros">
+          Limpiar
+        </button>
+      </div>
+
+      <div v-show="!isMobileView || showFilters" class="filters">
         <input
           v-model="filterLote"
           class="filter-input"
           type="text"
-          placeholder="Filtrar por Lote"
+          :placeholder="isMobileView ? 'Lote' : 'Filtrar por Lote'"
         />
         <input
           v-model="filterCarta"
           class="filter-input"
           type="text"
-          placeholder="Filtrar por Carta Nº"
+          :placeholder="isMobileView ? 'Carta Nº' : 'Filtrar por Carta Nº'"
         />
         <input
           v-model="filterUser"
           class="filter-input"
           type="text"
-          placeholder="Filtrar por Usuario"
+          :placeholder="isMobileView ? 'Usuario' : 'Filtrar por Usuario'"
         />
         <input
           v-model="filterComments"
           class="filter-input"
           type="text"
-          placeholder="Filtrar por Comentarios"
+          :placeholder="isMobileView ? 'Comentarios' : 'Filtrar por Comentarios'"
         />
       </div>
 
@@ -126,7 +140,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed  } from "vue"
+import { ref, onMounted, onBeforeUnmount, computed  } from "vue"
 import axios from "@/axios"
 import { useRouter } from 'vue-router'
 import deleteIcon from '@/assets/img/borrar.png';
@@ -142,6 +156,26 @@ const filterLote = ref('')
 const filterCarta = ref('')
 const filterUser = ref('')
 const filterComments = ref('')
+
+// Panel de filtros plegable: sólo aplica a la vista mobile.
+const isMobileView = ref(false)
+const showFilters = ref(false)
+let filtersMq = null
+
+const onFiltersMqChange = (e) => {
+  isMobileView.value = e.matches
+}
+
+const activeFilters = computed(
+  () => [filterLote, filterCarta, filterUser, filterComments].filter((f) => f.value.trim() !== '').length
+)
+
+const limpiarFiltros = () => {
+  filterLote.value = ''
+  filterCarta.value = ''
+  filterUser.value = ''
+  filterComments.value = ''
+}
 
 
 const nuevoArchivo = ref({
@@ -348,9 +382,18 @@ const filteredArchivos = computed(() => {
 
 onMounted(() => {
   isAdmin.value = !!localStorage.getItem('admin');
+
+  filtersMq = window.matchMedia('(max-width: 768px)')
+  isMobileView.value = filtersMq.matches
+  filtersMq.addEventListener('change', onFiltersMqChange)
+
   fetchArchivos()
   fetchLotes()
   fetchCartas()
+})
+
+onBeforeUnmount(() => {
+  filtersMq?.removeEventListener('change', onFiltersMqChange)
 })
 </script>
 
@@ -600,6 +643,90 @@ h1 {
   font-size: 0.9rem;
 }
 
+/* ===== Barra de filtros mobile ===== */
+.filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.filters-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #f5f7fa;
+  border: 1px solid #dfe3e8;
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2c3e50;
+  cursor: pointer;
+}
+
+.filters-count {
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+}
+
+.filters-chevron {
+  font-size: 0.8rem;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+
+.filters-chevron.open {
+  transform: rotate(180deg);
+}
+
+.filters-clear {
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.35rem 0.25rem;
+}
+
+@media (max-width: 768px) {
+  /* Dos por fila y bien compactos, en vez de cuatro cajas a lo ancho. */
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .filter-input {
+    flex: none;
+    width: 100%;
+    padding: 5px 8px;
+    font-size: 0.8rem;
+    border-radius: 8px;
+    /* Explícito para que no se pierda el texto con el celular en modo oscuro. */
+    background-color: #ffffff;
+    color: #111111;
+    caret-color: #111111;
+    color-scheme: light;
+  }
+
+  .filter-input::placeholder {
+    color: #8a94a0;
+    opacity: 1;
+  }
+}
+
 @media (max-width: 480px) {
 
   h1{
@@ -611,12 +738,11 @@ h1 {
     caret-color: #111;
   }
 
-  .filters {
-    flex-direction: column;
-  }
-
-  .filter-input {
+  .archivos-container {
     width: 100%;
+    margin: 1.5rem auto;
+    padding: 1rem;
+    border-radius: 0;
   }
 
 }

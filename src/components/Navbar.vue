@@ -11,6 +11,18 @@
         <a v-if="!user" href="#como-llegar">¿Cómo llegar?</a>
         <router-link to="/login" v-if="!user">Propietarios</router-link>
 
+        <!-- Menú hamburguesa: sólo app mobile (en desktop lo oculta el CSS). -->
+        <button
+          v-if="user"
+          class="burger-button"
+          type="button"
+          aria-label="Abrir menú"
+          :aria-expanded="drawerOpen"
+          @click="drawerOpen = true"
+        >
+          <v-icon size="26" color="#2c3e50">mdi-menu</v-icon>
+        </button>
+
         <!-- Contenedor de Notificaciones -->
         <div v-if="user" class="notification-container">
           <v-menu :close-on-content-click="false" location="bottom end" transition="scale-transition">
@@ -156,25 +168,115 @@
         </div>
       </nav>
     </div>
+
+    <!-- Drawer del menú mobile. Va teleportado al body para que no lo recorte
+         el sticky del header ni herede su z-index. -->
+    <Teleport to="body">
+      <transition name="scrim-fade">
+        <div v-if="drawerOpen" class="drawer-scrim" @click="drawerOpen = false"></div>
+      </transition>
+
+      <transition name="drawer-slide">
+        <aside v-if="drawerOpen" class="mobile-drawer" role="dialog" aria-label="Menú de navegación">
+          <div class="drawer-header">
+            <div class="drawer-user">
+              <v-icon size="22" color="white">mdi-account-circle</v-icon>
+              <span class="drawer-user-name">{{ displayName }}</span>
+            </div>
+            <button class="drawer-close" type="button" aria-label="Cerrar menú" @click="drawerOpen = false">
+              <v-icon size="22" color="white">mdi-close</v-icon>
+            </button>
+          </div>
+
+          <nav class="drawer-body">
+            <p class="drawer-section">General</p>
+            <button
+              v-for="item in generalItems"
+              :key="item.fullTitle"
+              class="drawer-item"
+              :class="{ active: route.path === item.to }"
+              type="button"
+              @click="navegar(item.to)"
+            >
+              <span class="drawer-item-icon" :style="{ background: item.color }">
+                <v-icon size="18" color="white">{{ item.icon }}</v-icon>
+              </span>
+              <span class="drawer-item-text">{{ item.fullTitle }}</span>
+            </button>
+
+            <template v-if="mostrarAdmin">
+              <p class="drawer-section">Administración</p>
+              <button
+                v-for="item in adminItems"
+                :key="item.fullTitle"
+                class="drawer-item"
+                :class="{ active: route.path === item.to }"
+                type="button"
+                @click="navegar(item.to)"
+              >
+                <span class="drawer-item-icon" :style="{ background: item.color }">
+                  <v-icon size="18" color="white">{{ item.icon }}</v-icon>
+                </span>
+                <span class="drawer-item-text">{{ item.fullTitle }}</span>
+                <span v-if="item.badge" class="drawer-item-badge">{{ item.badge }}</span>
+              </button>
+            </template>
+          </nav>
+
+          <div class="drawer-footer">
+            <button class="drawer-logout" type="button" @click="handleLogoutFromDrawer">
+              <v-icon size="18" class="mr-2">mdi-logout</v-icon>
+              Cerrar sesión
+            </button>
+          </div>
+        </aside>
+      </transition>
+    </Teleport>
   </header>
 </template>
 
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import usuarioIcon from '@/assets/img/usuario.png';
 import logo from '@/assets/img/hsm.png';
 import notificacionesIcon from '@/assets/img/notificaciones.png';
 import { useAuth } from '@/composables/useAuth'
 import { useNotifications } from '@/composables/useNotifications'
+import { useMenuItems } from '@/composables/useMenuItems'
 
-const { user, logout } = useAuth()
+const { user, userName, logout } = useAuth()
 const { notifications, unreadCount, hasMore, loadingMore, fetchNotifications, loadMoreNotifications, markAllAsRead, markOneAsRead } = useNotifications()
+const { generalItems, adminItems, mostrarAdmin, cargarAcceso } = useMenuItems()
 
 const dropdownVisible = ref(false)
 const profileRef = ref(null)
 const router = useRouter();
+const route = useRoute();
+
+const drawerOpen = ref(false)
+const displayName = computed(() => userName.value || user.value)
+
+const navegar = (path) => {
+  drawerOpen.value = false
+  if (route.path !== path) router.push(path)
+}
+
+const handleLogoutFromDrawer = () => {
+  drawerOpen.value = false
+  logout()
+}
+
+// Bloquea el scroll del fondo mientras el drawer está abierto.
+watch(drawerOpen, (abierto) => {
+  document.body.style.overflow = abierto ? 'hidden' : ''
+})
+
+// Si el usuario sale (logout o expiración de sesión) el drawer no debe quedar abierto.
+watch(user, (nuevo) => {
+  if (!nuevo) drawerOpen.value = false
+})
 
 // Estado para el modal de detalle
 const showDetail = ref(false)
@@ -205,6 +307,7 @@ onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   if (user.value) {
     fetchNotifications()
+    cargarAcceso()
   }
 })
 
@@ -212,6 +315,7 @@ onMounted(() => {
 watch(user, (newUser) => {
   if (newUser) {
     fetchNotifications()
+    cargarAcceso()
   } else {
     // Si se desloguea, limpiamos (esto es redundante pero seguro)
     fetchNotifications() 
@@ -252,6 +356,7 @@ const formatRelativeTime = (dateString) => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
+  document.body.style.overflow = ''
 })
 
 const handleLogout = () => {
@@ -629,5 +734,214 @@ const goToProfile = () => {
 
 .modern-dialog :deep(.v-overlay__content) {
   border-radius: 24px !important;
+}
+
+/* ===== Menú hamburguesa (sólo app mobile) ===== */
+
+.burger-button {
+  display: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+.burger-button:active {
+  background-color: rgba(44, 62, 80, 0.08);
+}
+
+.drawer-scrim,
+.mobile-drawer {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .burger-button {
+    display: inline-flex;
+  }
+
+  .drawer-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 2000;
+  }
+
+  .mobile-drawer {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(300px, 86vw);
+    background: #ffffff;
+    color: #2c3e50;
+    z-index: 2001;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+  }
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #2c3e50, #1a2733);
+  color: #ffffff;
+  padding: 1rem;
+  padding-top: calc(1rem + env(safe-area-inset-top));
+}
+
+.drawer-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.drawer-user-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drawer-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0.5rem 1rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.drawer-section {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a8a8a;
+  margin: 1rem 0 0.4rem 0.65rem;
+}
+
+.drawer-section:first-child {
+  margin-top: 0.5rem;
+}
+
+.drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 0.65rem;
+  text-align: left;
+  cursor: pointer;
+  color: #2c3e50;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.drawer-item:active {
+  background-color: #f0f3f1;
+}
+
+.drawer-item.active {
+  background-color: #eaf6ef;
+  font-weight: 600;
+}
+
+.drawer-item-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.drawer-item-text {
+  flex: 1;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.drawer-item-badge {
+  background-color: #e53935;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  flex-shrink: 0;
+}
+
+.drawer-footer {
+  border-top: 1px solid #eceeed;
+  padding: 0.6rem 0.75rem;
+  padding-bottom: calc(0.6rem + env(safe-area-inset-bottom));
+}
+
+.drawer-logout {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 0.5rem;
+  color: #c0392b;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.drawer-logout:active {
+  background-color: #fdecea;
+}
+
+.scrim-fade-enter-active,
+.scrim-fade-leave-active {
+  transition: opacity 0.22s ease;
+}
+
+.scrim-fade-enter-from,
+.scrim-fade-leave-to {
+  opacity: 0;
+}
+
+.drawer-slide-enter-active,
+.drawer-slide-leave-active {
+  transition: transform 0.24s ease;
+}
+
+.drawer-slide-enter-from,
+.drawer-slide-leave-to {
+  transform: translateX(-100%);
 }
 </style>
