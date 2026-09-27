@@ -1,133 +1,98 @@
 <template>
   <div class="turnero-wrapper">
-    <div class="back-arrow" @click="$router.push('/menu')">
-      <span class="arrow">←</span>
+    <div class="top-bar">
+      <div class="back-arrow" @click="$router.push('/menu')">
+        <span class="arrow">←</span>
+      </div>
+      <button class="mis-turnos-btn" @click="abrirMisTurnos">
+        <v-icon size="20">mdi-format-list-bulleted</v-icon>
+        <span>Mis turnos</span>
+      </button>
     </div>
 
-    <h1 class="page-title">Turnero de Canchas</h1>
-    <p class="page-subtitle">Reservá tu cancha de fútbol o tenis en simples pasos</p>
+    <h1 class="page-title">Sacar turno</h1>
+    <p class="page-subtitle">Reservá el SUM o el Quincho en simples pasos</p>
 
-    <v-tabs v-model="vista" class="custom-tabs" background-color="white" grow>
-      <v-tab value="futbol">
-        <v-icon left>mdi-soccer</v-icon>
-        Fútbol
-      </v-tab>
-      <v-tab value="tenis">
-        <v-icon left>mdi-tennis</v-icon>
-        Tenis
-      </v-tab>
-      <v-tab value="mis-turnos">
-        <v-icon left>mdi-format-list-bulleted</v-icon>
-        Mis turnos
-      </v-tab>
-    </v-tabs>
+    <!-- Selector de utilidad -->
+    <div class="utilidad-selector">
+      <button
+        v-for="u in utilidades"
+        :key="u.tipo"
+        :class="['utilidad-card', u.tipo, { active: utilidad === u.tipo }]"
+        :style="utilidad === u.tipo ? { background: u.color, borderColor: u.color } : {}"
+        @click="seleccionarUtilidad(u.tipo)"
+      >
+        <v-icon size="26" :color="utilidad === u.tipo ? 'white' : u.color">{{ u.icon }}</v-icon>
+        <span>{{ u.nombre }}</span>
+      </button>
+    </div>
 
-    <v-window v-model="vista" class="tab-content">
-      <!-- FUTBOL / TENIS -->
-      <v-window-item v-for="deporte in ['futbol', 'tenis']" :key="deporte" :value="deporte">
-        <!-- Selector de fecha -->
-        <div class="date-strip">
-          <button
-            v-for="dia in dias"
-            :key="dia.iso"
-            :class="['date-chip', { active: dia.iso === fechaSeleccionada }]"
-            @click="seleccionarFecha(dia.iso)"
-          >
-            <span class="date-dow">{{ dia.diaSemana }}</span>
-            <span class="date-num">{{ dia.diaNum }}</span>
-            <span class="date-month">{{ dia.mes }}</span>
-          </button>
-        </div>
+    <!-- Selector de fecha -->
+    <div class="date-selector">
+      <v-locale-provider locale="es">
+        <v-menu v-model="mostrarCalendario" :close-on-content-click="false" location="bottom">
+          <template #activator="{ props: menuProps }">
+            <button class="date-trigger" v-bind="menuProps">
+              <v-icon size="20">mdi-calendar-month-outline</v-icon>
+              <span>{{ fechaLegible }}</span>
+              <v-icon size="18">mdi-chevron-down</v-icon>
+            </button>
+          </template>
 
-        <div v-if="cargandoDisponibilidad" class="estado-info">
-          <v-progress-circular indeterminate color="deep-orange" size="28" />
-          <span>Cargando disponibilidad...</span>
-        </div>
+          <v-date-picker
+            v-model="fechaSeleccionadaDate"
+            :min="fechaMin"
+            :max="fechaMax"
+            first-day-of-week="1"
+            hide-header
+            show-adjacent-months
+            @update:model-value="mostrarCalendario = false"
+          />
+        </v-menu>
+      </v-locale-provider>
+      <span class="date-range-hint">Disponible con hasta 3 meses de anticipación</span>
+    </div>
 
-        <div v-else-if="errorDisponibilidad" class="estado-info error-text">
-          {{ errorDisponibilidad }}
-        </div>
+    <div v-if="cargandoDisponibilidad" class="estado-info">
+      <v-progress-circular indeterminate color="deep-orange" size="28" />
+      <span>Cargando disponibilidad...</span>
+    </div>
 
-        <div v-else class="canchas-grid">
-          <div class="cancha-card single">
-            <div :class="['cancha-header', deporte]">
-              <v-icon color="white">{{ deporte === 'futbol' ? 'mdi-soccer-field' : 'mdi-tennis-ball' }}</v-icon>
-              <h3>{{ deporte === 'futbol' ? 'Fútbol' : 'Tenis' }} · {{ capacidad }} canchas</h3>
-            </div>
-            <div class="slots-grid">
-              <button
-                v-for="slot in horarios"
-                :key="slot.hora"
-                :class="['slot', slot.estado, { selected: isSelected(slot) }]"
-                :disabled="slot.estado !== 'disponible'"
-                @click="seleccionarSlot(slot)"
-              >
-                <span class="slot-hora">{{ slot.hora }}</span>
-                <span v-if="slot.estado !== 'pasado'" class="slot-cupos">
-                  {{ slot.estado === 'ocupado' ? 'Completo' : slot.disponibles + '/' + capacidad }}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
+    <div v-else-if="errorDisponibilidad" class="estado-info error-text">
+      {{ errorDisponibilidad }}
+    </div>
 
-        <!-- Referencias -->
-        <div class="legend">
-          <span class="legend-item"><span class="dot disponible"></span> Disponible</span>
-          <span class="legend-item"><span class="dot seleccionado"></span> Seleccionado</span>
-          <span class="legend-item"><span class="dot ocupado"></span> Ocupado</span>
-        </div>
-      </v-window-item>
+    <div v-else class="bloques-grid">
+      <button
+        v-for="bloque in bloques"
+        :key="bloque.key"
+        :class="['bloque-card', bloque.estado, { selected: isSelected(bloque) }]"
+        :disabled="bloque.estado !== 'disponible'"
+        @click="seleccionarBloque(bloque)"
+      >
+        <span class="bloque-label">{{ bloque.label }}</span>
+        <span class="bloque-horario">{{ bloque.horaInicio }} a {{ bloque.horaFin }}hs</span>
+        <span v-if="bloque.estado !== 'pasado'" class="bloque-estado">
+          {{ bloque.estado === 'ocupado' ? 'Ocupado' : 'Disponible' }}
+        </span>
+      </button>
+    </div>
 
-      <!-- MIS TURNOS -->
-      <v-window-item value="mis-turnos">
-        <div v-if="cargandoMisTurnos" class="estado-info">
-          <v-progress-circular indeterminate color="deep-orange" size="28" />
-          <span>Cargando tus turnos...</span>
-        </div>
-
-        <div v-else-if="misTurnos.length === 0" class="estado-info">
-          Todavía no reservaste ningún turno.
-        </div>
-
-        <div v-else class="mis-turnos-list">
-          <div v-for="turno in misTurnos" :key="turno.id" class="turno-item">
-            <div class="turno-info">
-              <v-icon :color="turno.cancha.tipo === 'futbol' ? '#2e8b57' : '#a99a1a'">
-                {{ turno.cancha.tipo === 'futbol' ? 'mdi-soccer' : 'mdi-tennis' }}
-              </v-icon>
-              <div>
-                <strong>{{ turno.cancha.nombre }}</strong>
-                <span>{{ formatearFecha(turno.fecha) }} · {{ turno.hora_inicio.slice(0, 5) }} hs</span>
-              </div>
-            </div>
-
-            <div class="turno-actions">
-              <span :class="['badge', turno.estado]">{{ turno.estado === 'reservado' ? 'Reservado' : 'Cancelado' }}</span>
-              <v-btn
-                v-if="turno.estado === 'reservado'"
-                size="small"
-                variant="text"
-                color="deep-orange"
-                :disabled="!puedeCancelar(turno)"
-                @click="abrirConfirmacionCancelar(turno)"
-              >
-                Cancelar
-              </v-btn>
-            </div>
-          </div>
-        </div>
-      </v-window-item>
-    </v-window>
+    <!-- Referencias -->
+    <div class="legend">
+      <span class="legend-item"><span class="dot disponible"></span> Disponible</span>
+      <span class="legend-item"><span class="dot seleccionado"></span> Seleccionado</span>
+      <span class="legend-item"><span class="dot ocupado"></span> Ocupado</span>
+    </div>
 
     <!-- Barra flotante de confirmación -->
     <transition name="slide-up">
-      <div v-if="slotElegido" class="floating-bar">
+      <div v-if="bloqueElegido" class="floating-bar">
         <div class="floating-info">
-          <v-icon color="white">{{ vista === 'futbol' ? 'mdi-soccer' : 'mdi-tennis' }}</v-icon>
+          <v-icon color="white">{{ utilidadActiva.icon }}</v-icon>
           <div>
-            <strong>{{ vista === 'futbol' ? 'Fútbol' : 'Tenis' }}</strong>
-            <span>{{ fechaLegible }} · {{ slotElegido.hora }} hs</span>
+            <strong>{{ utilidadActiva.nombre }}</strong>
+            <span>{{ fechaLegible }} · {{ bloqueElegido.label }} ({{ bloqueElegido.horaInicio }} a {{ bloqueElegido.horaFin }}hs)</span>
           </div>
         </div>
         <div class="floating-actions">
@@ -142,9 +107,9 @@
       <v-card>
         <v-card-title class="text-h6">Confirmar reserva</v-card-title>
         <v-card-text>
-          <p><v-icon size="18" class="mr-1">mdi-stadium-variant</v-icon> <strong>Deporte:</strong> {{ vista === 'futbol' ? 'Fútbol' : 'Tenis' }}</p>
+          <p><v-icon size="18" class="mr-1">mdi-domain</v-icon> <strong>Utilidad:</strong> {{ utilidadActiva.nombre }}</p>
           <p><v-icon size="18" class="mr-1">mdi-calendar</v-icon> <strong>Fecha:</strong> {{ fechaLegible }}</p>
-          <p><v-icon size="18" class="mr-1">mdi-clock-outline</v-icon> <strong>Horario:</strong> {{ slotElegido?.hora }} hs</p>
+          <p><v-icon size="18" class="mr-1">mdi-clock-outline</v-icon> <strong>Horario:</strong> {{ bloqueElegido?.label }} ({{ bloqueElegido?.horaInicio }} a {{ bloqueElegido?.horaFin }}hs)</p>
 
           <v-select
             v-if="lotes.length > 1"
@@ -166,14 +131,62 @@
       </v-card>
     </v-dialog>
 
+    <!-- Modal Mis turnos -->
+    <v-dialog v-model="showMisTurnos" max-width="560px">
+      <v-card>
+        <v-card-title class="text-h6">Mis turnos</v-card-title>
+        <v-card-text>
+          <div v-if="cargandoMisTurnos" class="estado-info">
+            <v-progress-circular indeterminate color="deep-orange" size="28" />
+            <span>Cargando tus turnos...</span>
+          </div>
+
+          <div v-else-if="misTurnos.length === 0" class="estado-info">
+            Todavía no reservaste ningún turno.
+          </div>
+
+          <div v-else class="mis-turnos-list">
+            <div v-for="turno in misTurnos" :key="turno.id" class="turno-item">
+              <div class="turno-info">
+                <v-icon :color="utilidadInfo(turno.cancha.tipo).color">
+                  {{ utilidadInfo(turno.cancha.tipo).icon }}
+                </v-icon>
+                <div>
+                  <strong>{{ turno.cancha.nombre }}</strong>
+                  <span>{{ formatearFecha(turno.fecha) }} · {{ turno.hora_inicio.slice(0, 5) }} a {{ turno.hora_fin.slice(0, 5) }} hs</span>
+                </div>
+              </div>
+
+              <div class="turno-actions">
+                <span :class="['badge', turno.estado]">{{ turno.estado === 'reservado' ? 'Reservado' : 'Cancelado' }}</span>
+                <v-btn
+                  v-if="turno.estado === 'reservado'"
+                  size="small"
+                  variant="text"
+                  color="deep-orange"
+                  :disabled="!puedeCancelar(turno)"
+                  @click="abrirConfirmacionCancelar(turno)"
+                >
+                  Cancelar
+                </v-btn>
+              </div>
+            </div>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="showMisTurnos = false">Cerrar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Modal de confirmación de cancelación -->
     <v-dialog v-model="showCancelConfirm" max-width="420px">
       <v-card>
         <v-card-title class="text-h6">¿Cancelar este turno?</v-card-title>
         <v-card-text v-if="turnoACancelar">
-          <p><v-icon size="18" class="mr-1">mdi-stadium-variant</v-icon> <strong>Cancha:</strong> {{ turnoACancelar.cancha.nombre }}</p>
-          <p><v-icon size="18" class="mr-1">mdi-calendar</v-icon> <strong>Fecha:</strong> {{ formatearFecha(turnoACancelar.fecha) }}</p>
-          <p><v-icon size="18" class="mr-1">mdi-clock-outline</v-icon> <strong>Horario:</strong> {{ turnoACancelar.hora_inicio.slice(0, 5) }} hs</p>
+          <p><strong>Espacio:</strong> {{ turnoACancelar.cancha.nombre }}</p>
+          <p><strong>Fecha:</strong> {{ formatearFecha(turnoACancelar.fecha) }} · {{ turnoACancelar.hora_inicio.slice(0, 5) }} a {{ turnoACancelar.hora_fin.slice(0, 5) }} hs</p>
           <p class="cancel-warning">Esta acción no se puede deshacer.</p>
         </v-card-text>
         <v-card-actions>
@@ -192,15 +205,29 @@
 </template>
 
 <script setup>
+// El turnero de fútbol/tenis (con selector por tabs y grilla horaria) quedó
+// deshabilitado desde 2026-08-28 en favor de SUM y Quincho, que se reservan
+// por bloque (mañana / tarde-noche) en vez de por hora. El componente viejo
+// se conserva completo en Turnero.futbol-tenis.legacy.vue.bak.
 import { ref, computed, watch, onMounted } from 'vue';
 import api from '@/axios';
 
-const vista = ref('futbol');
+const utilidades = [
+  { tipo: 'sum', nombre: 'SUM', icon: 'mdi-account-group', color: '#3454a0' },
+  { tipo: 'quincho', nombre: 'Quincho', icon: 'mdi-grill', color: '#b5651d' },
+];
+
+const utilidad = ref('sum');
+const utilidadActiva = computed(() => utilidades.find((u) => u.tipo === utilidad.value));
+function utilidadInfo(tipo) {
+  return utilidades.find((u) => u.tipo === tipo) || utilidades[0];
+}
+
 const showConfirm = ref(false);
 const confirmando = ref(false);
 const mensajeExito = ref('');
 const errorReserva = ref('');
-const slotElegido = ref(null);
+const bloqueElegido = ref(null);
 
 const showCancelConfirm = ref(false);
 const cancelando = ref(false);
@@ -208,9 +235,10 @@ const turnoACancelar = ref(null);
 
 const cargandoDisponibilidad = ref(false);
 const errorDisponibilidad = ref('');
-const horarios = ref([]);
+const bloques = ref([]);
 const capacidad = ref(0);
 
+const showMisTurnos = ref(false);
 const cargandoMisTurnos = ref(false);
 const misTurnos = ref([]);
 
@@ -221,43 +249,46 @@ const snackbar = ref({ show: false, text: '', color: 'success' });
 
 const userEmail = localStorage.getItem('user') || '';
 
-function generarDias() {
-  const dow = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-  const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-  const out = [];
+const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const MESES_ANIO = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
-  for (let i = 0; i < 10; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    const iso = d.toISOString().slice(0, 10);
-    out.push({
-      iso,
-      diaSemana: dow[d.getDay()],
-      diaNum: d.getDate(),
-      mes: meses[d.getMonth()],
-    });
-  }
-  return out;
+function isoLocal(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
-const dias = generarDias();
-const fechaSeleccionada = ref(dias[0].iso);
+function medianocheLocal(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+// El turnero acepta reservas de hoy a 3 meses hacia adelante. Como los límites
+// se calculan a partir de "ahora" en cada carga del componente, la ventana se
+// va corriendo sola un día para adelante a medida que pasan los días.
+const fechaMin = medianocheLocal(new Date());
+const fechaMax = medianocheLocal(new Date());
+fechaMax.setMonth(fechaMax.getMonth() + 3);
+
+const mostrarCalendario = ref(false);
+const fechaSeleccionadaDate = ref(new Date(fechaMin));
+const fechaSeleccionada = computed(() => isoLocal(fechaSeleccionadaDate.value));
 
 function mostrarSnackbar(text, color = 'success') {
   snackbar.value = { show: true, text, color };
 }
 
 async function cargarDisponibilidad() {
-  if (vista.value !== 'futbol' && vista.value !== 'tenis') return;
-
   cargandoDisponibilidad.value = true;
   errorDisponibilidad.value = '';
 
   try {
     const { data } = await api.get('/turnero/disponibilidad', {
-      params: { tipo: vista.value, fecha: fechaSeleccionada.value },
+      params: { tipo: utilidad.value, fecha: fechaSeleccionada.value },
     });
-    horarios.value = data.horarios;
+    bloques.value = data.bloques;
     capacidad.value = data.capacidad;
   } catch (error) {
     errorDisponibilidad.value = 'No se pudo cargar la disponibilidad. Intentá nuevamente.';
@@ -295,13 +326,9 @@ async function cargarLotes() {
   }
 }
 
-watch([vista, fechaSeleccionada], () => {
-  slotElegido.value = null;
-  if (vista.value === 'mis-turnos') {
-    cargarMisTurnos();
-  } else {
-    cargarDisponibilidad();
-  }
+watch([utilidad, fechaSeleccionada], () => {
+  bloqueElegido.value = null;
+  cargarDisponibilidad();
 });
 
 onMounted(() => {
@@ -309,29 +336,32 @@ onMounted(() => {
   cargarLotes();
 });
 
-function seleccionarFecha(iso) {
-  fechaSeleccionada.value = iso;
+function seleccionarUtilidad(tipo) {
+  utilidad.value = tipo;
 }
 
-function isSelected(slot) {
-  return slotElegido.value?.hora === slot.hora;
+function isSelected(bloque) {
+  return bloqueElegido.value?.key === bloque.key;
 }
 
-function seleccionarSlot(slot) {
-  if (slot.estado !== 'disponible') return;
+function seleccionarBloque(bloque) {
+  if (bloque.estado !== 'disponible') return;
 
-  if (isSelected(slot)) {
-    slotElegido.value = null;
+  if (isSelected(bloque)) {
+    bloqueElegido.value = null;
     return;
   }
 
-  slotElegido.value = {
-    hora: slot.hora,
+  bloqueElegido.value = {
+    key: bloque.key,
+    label: bloque.label,
+    horaInicio: bloque.horaInicio,
+    horaFin: bloque.horaFin,
   };
 }
 
 function cancelarSeleccion() {
-  slotElegido.value = null;
+  bloqueElegido.value = null;
 }
 
 function abrirConfirmacion() {
@@ -340,10 +370,15 @@ function abrirConfirmacion() {
   showConfirm.value = true;
 }
 
+function abrirMisTurnos() {
+  showMisTurnos.value = true;
+  cargarMisTurnos();
+}
+
 const fechaLegible = computed(() => {
-  const dia = dias.find((d) => d.iso === fechaSeleccionada.value);
-  if (!dia) return '';
-  return `${dia.diaSemana} ${dia.diaNum} de ${dia.mes}`;
+  const d = fechaSeleccionadaDate.value;
+  const texto = `${DIAS_SEMANA[d.getDay()]} ${d.getDate()} de ${MESES_ANIO[d.getMonth()]}`;
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
 });
 
 function formatearFecha(fechaIso) {
@@ -369,17 +404,17 @@ async function confirmarTurno() {
   try {
     await api.post('/turnero/reservar', {
       email: userEmail,
-      tipo: vista.value,
+      tipo: utilidad.value,
       nlote: loteSeleccionado.value,
       fecha: fechaSeleccionada.value,
-      hora: slotElegido.value.hora,
+      bloque: bloqueElegido.value.key,
     });
 
     mensajeExito.value = '¡Turno reservado con éxito!';
     setTimeout(() => {
       showConfirm.value = false;
       mensajeExito.value = '';
-      slotElegido.value = null;
+      bloqueElegido.value = null;
       cargarDisponibilidad();
     }, 1200);
   } catch (error) {
@@ -419,10 +454,36 @@ async function confirmarCancelacion() {
   font-family: 'Roboto', sans-serif;
 }
 
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .back-arrow {
   font-size: 1.5rem;
   cursor: pointer;
-  margin-right: 1rem;
+}
+
+.mis-turnos-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #e0e0e0;
+  background: white;
+  color: #2c3e50;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.mis-turnos-btn:hover {
+  border-color: #ff8328;
+  color: #ff8328;
 }
 
 .page-title {
@@ -439,11 +500,6 @@ async function confirmarCancelacion() {
   margin-bottom: 1.5rem;
 }
 
-.custom-tabs {
-  width: 70%;
-  margin: 0 auto 1.5rem auto;
-}
-
 .estado-info {
   display: flex;
   align-items: center;
@@ -457,178 +513,171 @@ async function confirmarCancelacion() {
   color: #c0392b;
 }
 
-/* Selector de fecha */
-.date-strip {
+/* Selector de utilidad */
+.utilidad-selector {
   display: flex;
-  gap: 0.75rem;
-  overflow-x: auto;
-  padding: 0.5rem 0.25rem 1.5rem;
+  gap: 1rem;
   justify-content: center;
-  flex-wrap: wrap;
+  width: 90%;
+  max-width: 480px;
+  margin: 0 auto 1.5rem auto;
 }
 
-/* Los chips van sobre fondo blanco fijo, así que el color de texto se declara
-   explícito: si se hereda, en modo oscuro el navegador lo pinta casi blanco
-   y el contenido queda invisible. */
-.date-chip {
+.utilidad-card {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 64px;
-  padding: 0.6rem 0.4rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  background: #ffffff;
+  gap: 0.4rem;
+  padding: 1rem 0.5rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 14px;
+  background: white;
   color: #2c3e50;
-  color-scheme: light;
+  font-weight: 600;
+  font-size: 0.95rem;
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: inherit;
 }
 
-.date-chip:hover {
+.utilidad-card:hover {
   border-color: #ff8328;
 }
 
-.date-chip.active,
-.date-chip.active .date-dow,
-.date-chip.active .date-num,
-.date-chip.active .date-month {
-  color: #ffffff;
-}
-
-.date-chip.active {
-  background: #ff8328;
-  border-color: #ff8328;
-  box-shadow: 0 4px 10px rgba(255, 131, 40, 0.35);
-}
-
-.date-dow {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  color: #5a6b7a;
-}
-
-.date-num {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #2c3e50;
-}
-
-.date-month {
-  font-size: 0.75rem;
-  text-transform: lowercase;
-  color: #5a6b7a;
-}
-
-/* Grid de canchas */
-.tab-content {
-  margin-top: 0.5rem;
-}
-
-.canchas-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  justify-content: center;
-  width: 90%;
-  margin: 0 auto;
-}
-
-.cancha-card {
-  background: white;
-  border-radius: 14px;
-  width: 100%;
-  max-width: 360px;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.cancha-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-}
-
-.cancha-header {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.9rem 1.1rem;
+.utilidad-card.active {
   color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
 }
 
-.cancha-header.futbol {
-  background: linear-gradient(135deg, #2e8b57, #1f6b40);
-}
-
-.cancha-header.tenis {
-  background: linear-gradient(135deg, #d8c027, #a99a1a);
-}
-
-.cancha-header h3 {
-  font-size: 1.05rem;
-  margin: 0;
-}
-
-.slots-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-  gap: 0.5rem;
-  padding: 1rem;
-}
-
-.slot {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background: white;
-  color: #2c3e50;
-  padding: 0.4rem 0.3rem;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
+/* Selector de fecha */
+.date-selector {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.1rem;
+  gap: 0.4rem;
+  margin-bottom: 1.5rem;
 }
 
-.slot-hora {
+/* Va sobre fondo blanco fijo, así que el color de texto se declara explícito:
+   si se hereda, en modo oscuro el navegador lo pinta casi blanco y el
+   contenido queda invisible. */
+.date-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #2c3e50;
+  color-scheme: light;
+  font-size: 0.95rem;
   font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
 }
 
-.slot-cupos {
-  font-size: 0.68rem;
-  opacity: 0.7;
-}
-
-.cancha-card.single {
-  max-width: 640px;
-}
-
-.slot.disponible:hover {
+.date-trigger:hover {
   border-color: #ff8328;
   color: #ff8328;
 }
 
-.slot.selected {
+.date-range-hint {
+  font-size: 0.78rem;
+  color: #6b7785;
+}
+
+/* Bloques horarios */
+.bloques-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  justify-content: center;
+  width: 90%;
+  max-width: 640px;
+  margin: 0.5rem auto 0;
+}
+
+.bloque-card {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 14px;
+  padding: 1.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.bloque-label {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.bloque-horario {
+  font-size: 0.9rem;
+  color: #6b7785;
+}
+
+.bloque-estado {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #1f8a4c;
+}
+
+.bloque-card.disponible:hover {
+  border-color: #ff8328;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+.bloque-card.selected {
   background: #ff8328;
   border-color: #ff8328;
-  color: white;
-  font-weight: 600;
 }
 
-.slot.pasado {
+.bloque-card.selected .bloque-label,
+.bloque-card.selected .bloque-horario,
+.bloque-card.selected .bloque-estado {
+  color: white;
+}
+
+.bloque-card.pasado {
   background: #f7f7f7;
-  color: #cfcfcf;
   cursor: not-allowed;
 }
 
-.slot.ocupado {
-  background: #f1f1f1;
+.bloque-card.pasado .bloque-label,
+.bloque-card.pasado .bloque-horario {
+  color: #cfcfcf;
+}
+
+.bloque-card.ocupado {
+  background: #f7f7f7;
+  cursor: not-allowed;
+}
+
+.bloque-card.ocupado .bloque-label {
   color: #b0b0b0;
   text-decoration: line-through;
-  cursor: not-allowed;
+}
+
+.bloque-card.ocupado .bloque-horario {
+  color: #cfcfcf;
+}
+
+.bloque-card.ocupado .bloque-estado {
+  color: #b0b0b0;
 }
 
 /* Leyenda */
@@ -674,19 +723,15 @@ async function confirmarCancelacion() {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  width: 90%;
-  max-width: 640px;
-  margin: 0 auto;
 }
 
 .turno-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: white;
+  background: #f8f9fa;
   border-radius: 12px;
   padding: 0.9rem 1.1rem;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
   flex-wrap: wrap;
   gap: 0.6rem;
 }
@@ -804,28 +849,17 @@ async function confirmarCancelacion() {
 }
 
 @media (max-width: 480px) {
-  .custom-tabs {
+  .utilidad-selector {
     width: 100%;
   }
 
-  .canchas-grid {
+  .bloques-grid {
     width: 100%;
   }
 
-  /* En mobile la tira de fechas se desliza en una sola fila en lugar de
-     apilarse en tres renglones. */
-  .date-strip {
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    gap: 0.5rem;
-    padding-bottom: 1rem;
-    scroll-snap-type: x proximity;
-  }
-
-  .date-chip {
-    flex: 0 0 auto;
-    min-width: 58px;
-    scroll-snap-align: start;
+  .bloque-card {
+    min-width: 45%;
+    padding: 1.1rem 0.6rem;
   }
 
   .floating-bar {
@@ -835,6 +869,10 @@ async function confirmarCancelacion() {
 
   .floating-actions {
     justify-content: flex-end;
+  }
+
+  .mis-turnos-btn span {
+    display: none;
   }
 }
 </style>

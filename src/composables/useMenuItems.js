@@ -63,11 +63,7 @@ export function useMenuItems() {
 
   const generalItems = computed(() => (isPaqueteria() ? paqueteriaItems : [
     { fullTitle: 'Gastos Comunes', icon: 'mdi-cash-multiple', color: GREEN, to: '/gastos' },
-    // Turnero de Canchas: oculto para usuarios comunes por ahora. Para volver a
-    // habilitarlo a todos, quitar el `...(isAdmin() ? [...] : [])` y dejar el objeto suelto.
-    ...(isAdmin()
-      ? [{ fullTitle: 'Turnero de Canchas', icon: 'mdi-tennis', color: GREEN, to: '/turnero' }]
-      : []),
+    { fullTitle: 'Sacar turno', icon: 'mdi-calendar-check-outline', color: GREEN, to: '/turnero' },
     { fullTitle: 'Mis Paquetes', icon: 'mdi-package-variant-closed', color: GREEN, to: '/paqueteria' },
     { fullTitle: 'Mi Perfil', icon: 'mdi-account-circle-outline', color: GREEN, to: '/mi-perfil' },
     { fullTitle: 'Contacto/Servicios', icon: 'mdi-phone-in-talk-outline', color: GREEN, to: '/contact-services' },

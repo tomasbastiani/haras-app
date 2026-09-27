@@ -62,8 +62,8 @@ router.beforeEach((to, from, next) => {
   const admin = localStorage.getItem('admin');
   const paqueteria = localStorage.getItem('paqueteria');
 
-  // Si intenta ir a /login estando logueado, lo mandamos al menú
-  if (to.path === '/login' && user) {
+  // Si intenta ir a /login o a la portada estando logueado, lo mandamos al menú
+  if ((to.path === '/login' || to.path === '/') && user) {
     return next(paqueteria ? '/paqueteria-oficina' : '/menu');
   }
 

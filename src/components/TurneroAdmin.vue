@@ -13,11 +13,20 @@
         </div>
 
         <div class="filter-item">
-          <label>Deporte:</label>
+          <label>Utilidad:</label>
           <select v-model="filtroTipo">
-            <option value="">Todos</option>
-            <option value="futbol">Fútbol</option>
-            <option value="tenis">Tenis</option>
+            <option value="">Todas</option>
+            <option value="sum">SUM</option>
+            <option value="quincho">Quincho</option>
+          </select>
+        </div>
+
+        <div class="filter-item">
+          <label>Estado:</label>
+          <select v-model="filtroMomento">
+            <option value="proximos">Próximos</option>
+            <option value="pasados">Pasados</option>
+            <option value="todos">Todos</option>
           </select>
         </div>
 
@@ -44,10 +53,10 @@
       <table class="turnos-table">
         <thead>
           <tr>
-            <th>Cancha</th>
-            <th>Deporte</th>
+            <th>Espacio</th>
+            <th>Utilidad</th>
             <th>Fecha</th>
-            <th>Hora</th>
+            <th>Horario</th>
             <th>Propietario</th>
             <th>Email</th>
             <th>Lote</th>
@@ -59,7 +68,7 @@
             <td>{{ turno.cancha }}</td>
             <td>
               <span :class="['tipo-badge', turno.tipo]">
-                {{ turno.tipo === 'futbol' ? 'Fútbol' : 'Tenis' }}
+                {{ turno.tipo === 'sum' ? 'SUM' : 'Quincho' }}
               </span>
             </td>
             <td>{{ formatearFecha(turno.fecha) }}</td>
@@ -124,12 +133,13 @@ const turnoACancelar = ref(null);
 const filtroFecha = ref('');
 const filtroTipo = ref('');
 const filtroTexto = ref('');
+const filtroMomento = ref('proximos');
 
 async function cargarTurnos() {
   isLoading.value = true;
 
   try {
-    const params = {};
+    const params = { momento: filtroMomento.value };
     if (filtroFecha.value) params.fecha = filtroFecha.value;
     if (filtroTipo.value) params.tipo = filtroTipo.value;
 
@@ -163,6 +173,7 @@ function limpiarFiltros() {
   filtroFecha.value = '';
   filtroTipo.value = '';
   filtroTexto.value = '';
+  filtroMomento.value = 'proximos';
 }
 
 function abrirConfirmacionCancelar(turno) {
@@ -195,7 +206,7 @@ async function confirmarCancelacion() {
   }
 }
 
-watch([filtroFecha, filtroTipo], cargarTurnos);
+watch([filtroFecha, filtroTipo, filtroMomento], cargarTurnos);
 
 onMounted(cargarTurnos);
 </script>
@@ -314,14 +325,14 @@ h2 {
   border-radius: 999px;
 }
 
-.tipo-badge.futbol {
-  background: #e8f6ee;
-  color: #1f6b40;
+.tipo-badge.sum {
+  background: #e6ecfa;
+  color: #3454a0;
 }
 
-.tipo-badge.tenis {
-  background: #fbf6df;
-  color: #a99a1a;
+.tipo-badge.quincho {
+  background: #f7e9de;
+  color: #b5651d;
 }
 
 .cancel-link {

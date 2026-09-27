@@ -580,6 +580,10 @@ async function registrar() {
     altaResultado.value = data;
     Object.assign(alta, altaVacia());
     fotoAlta.value = '';
+    // Refresca la bandeja en segundo plano (seguimos en la pestaña "Recibir
+    // paquete", así que esto no se ve) para que el contador y la lista ya
+    // estén al día cuando el operario pase a la pestaña "Bandeja".
+    cargar();
   } catch (e) {
     mensajeError.value = e.response?.data?.message || 'No pudimos registrar el paquete.';
   } finally {
