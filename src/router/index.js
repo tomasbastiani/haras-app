@@ -20,6 +20,8 @@ import TurneroAdmin from '@/components/TurneroAdmin.vue';
 import Paqueteria from '@/components/Paqueteria.vue';
 import PaqueteriaAdmin from '@/components/PaqueteriaAdmin.vue';
 import PaqueteriaUsuarios from '@/components/PaqueteriaUsuarios.vue';
+import Mensajeria from '@/components/mensajeria/Mensajeria.vue';
+import MensajeriaUsuarios from '@/components/MensajeriaUsuarios.vue';
 
 const routes = [
   { path: '/', component: Home },
@@ -45,12 +47,28 @@ const routes = [
   // resuelve el backend y la vista muestra el aviso si no lo tiene.
   { path: '/paqueteria-oficina', component: PaqueteriaAdmin, meta: { requiresAuth: true } },
   { path: '/paqueteria-usuarios', component: PaqueteriaUsuarios, meta: { requiresAuth: true, requiresAdmin: true } },
+  // Mensajería interna. `layout: 'completo'` le dice a App.vue que no dibuje
+  // navbar, footer ni el widget del bot: el módulo ocupa la pantalla entera.
+  // Sin requiresAdmin: el acceso lo da la tabla mensajeria_miembros, y el
+  // backend lo revalida en cada endpoint.
+  {
+    path: '/mensajeria',
+    component: Mensajeria,
+    meta: { requiresAuth: true, requiresMensajeria: true, layout: 'completo' },
+  },
+  { path: '/mensajeria-usuarios', component: MensajeriaUsuarios, meta: { requiresAuth: true, requiresAdmin: true } },
 ];
 
 // Lo único que puede ver una cuenta de portería. `/menu` entra porque el menú
 // ya le viene recortado a estas mismas dos secciones, y `/mi-perfil` porque
 // tiene que poder cambiar su contraseña.
-const RUTAS_PAQUETERIA = ['/paqueteria-oficina', '/mi-perfil', '/menu'];
+//
+// `/mensajeria` está en la lista para no dejar afuera al personal de portería
+// que además tenga cuenta personal habilitada en el chat: sin esto, el guard lo
+// expulsaría a la oficina. Entrar igual requiere el flag de mensajería, que la
+// cuenta compartida no tiene (el backend se la niega, ver
+// MensajeriaMiembroController@update).
+const RUTAS_PAQUETERIA = ['/paqueteria-oficina', '/mi-perfil', '/menu', '/mensajeria'];
 
 const router = createRouter({
   history: createWebHistory(),//createWebHistory('/test/'),//createWebHistory(),
@@ -87,6 +105,14 @@ router.beforeEach((to, from, next) => {
 
   // Si necesita permisos de admin y no los tiene
   if (to.meta.requiresAdmin && !admin) {
+    return next('/menu');
+  }
+
+  // Mensajería interna. Igual que el resto de este guard, es UX y no seguridad:
+  // evita que alguien sin acceso entre por URL y se coma un 403 en pantalla. El
+  // permiso real lo chequea el middleware `mensajeria` del backend en cada
+  // endpoint, así que tocar este flag en localStorage no habilita nada.
+  if (to.meta.requiresMensajeria && !localStorage.getItem('mensajeria')) {
     return next('/menu');
   }
 

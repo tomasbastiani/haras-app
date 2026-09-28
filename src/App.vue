@@ -1,13 +1,24 @@
 <template>
   <v-app>
-    <Navbar />
-    <main class="main-content">
-      <router-view />
-    </main>
-    <Footer />
+    <!--
+      La mensajería interna se sale del chrome de la app a propósito: ocupa la
+      altura completa sin scroll de página y trae su propio encabezado, así que
+      navbar, footer, el fondo con textura y el widget del bot de reclamos no van.
+      Se resuelve con `meta.layout` en la ruta en vez de con layouts anidados
+      para no tener que refactorizar el router entero por un solo módulo.
+    -->
+    <template v-if="!pantallaCompleta">
+      <Navbar />
+      <main class="main-content">
+        <router-view />
+      </main>
+      <Footer />
 
-    <!-- Asistente de reclamos (solo propietarios logueados) -->
-    <ChatWidget />
+      <!-- Asistente de reclamos (solo propietarios logueados) -->
+      <ChatWidget />
+    </template>
+
+    <router-view v-else />
 
     <!-- Snackbar Global para Notificaciones Push -->
     <v-snackbar
@@ -34,7 +45,8 @@
 </template>
 
 <script setup>
-import { onMounted, reactive } from 'vue';
+import { computed, onMounted, reactive } from 'vue';
+import { useRoute } from 'vue-router';
 import Navbar from './components/Navbar.vue'
 import Footer from './components/Footer.vue'
 import ChatWidget from './components/ChatWidget.vue'
@@ -43,6 +55,10 @@ import { useNotifications } from '@/composables/useNotifications'
 import { useAuth } from '@/composables/useAuth'
 
 const { user } = useAuth();
+const route = useRoute();
+
+// Rutas que se dibujan solas, sin el chrome de la app (ver el template).
+const pantallaCompleta = computed(() => route.meta?.layout === 'completo');
 const { addNotification } = useNotifications();
 const snackbar = reactive({
   show: false,

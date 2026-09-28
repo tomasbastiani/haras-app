@@ -23,6 +23,35 @@
           <v-icon size="26" color="#2c3e50">mdi-menu</v-icon>
         </button>
 
+        <!--
+          Acceso a la mensajería interna.
+          En el drawer mobile ya aparece como ítem del menú, pero en desktop el
+          navbar no tenía ninguna navegación: un usuario logueado sólo veía la
+          campana y el perfil, así que al chat sólo se llegaba pasando por /menu.
+          El badge es lo que justifica tenerlo acá: desde cualquier pantalla se ve
+          si hay mensajes esperando.
+        -->
+        <router-link
+          v-if="user && tieneMensajeria()"
+          to="/mensajeria"
+          class="chat-btn"
+          :title="totalNoLeidos > 0
+            ? `Mensajería interna · ${totalNoLeidos} sin leer`
+            : 'Mensajería interna'"
+          aria-label="Mensajería interna"
+        >
+          <v-badge
+            v-if="totalNoLeidos > 0"
+            color="error"
+            :content="totalNoLeidos > 99 ? '99+' : totalNoLeidos"
+            offset-x="4"
+            offset-y="4"
+          >
+            <v-icon size="24" color="#2c3e50">mdi-forum-outline</v-icon>
+          </v-badge>
+          <v-icon v-else size="24" color="#2c3e50">mdi-forum-outline</v-icon>
+        </router-link>
+
         <!-- Contenedor de Notificaciones -->
         <div v-if="user" class="notification-container">
           <v-menu :close-on-content-click="false" location="bottom end" transition="scale-transition">
@@ -245,10 +274,14 @@ import notificacionesIcon from '@/assets/img/notificaciones.png';
 import { useAuth } from '@/composables/useAuth'
 import { useNotifications } from '@/composables/useNotifications'
 import { useMenuItems } from '@/composables/useMenuItems'
+import { useMensajeriaAvisos } from '@/composables/useMensajeriaAvisos'
 
-const { user, userName, logout } = useAuth()
+const { user, userName, logout, tieneMensajeria } = useAuth()
 const { notifications, unreadCount, hasMore, loadingMore, fetchNotifications, loadMoreNotifications, markAllAsRead, markOneAsRead } = useNotifications()
 const { generalItems, adminItems, mostrarAdmin, cargarAcceso } = useMenuItems()
+// El contador lo arranca cargarAcceso() (en useMenuItems) cuando confirma que la
+// persona participa del chat. Acá sólo se lee.
+const { totalNoLeidos } = useMensajeriaAvisos()
 
 const dropdownVisible = ref(false)
 const profileRef = ref(null)
@@ -418,6 +451,28 @@ const goToProfile = () => {
   mix-blend-mode: multiply;
   padding: 4px; /* Un poco de aire para que el borde verde no toque la campana */
 }
+
+/* Acceso a la mensajería interna. Mismo tamaño táctil que la campana (44px) para
+   que los dos iconos del navbar queden alineados y con el mismo blanco alrededor. */
+.chat-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.chat-btn:hover {
+  border-color: #27ae60;
+  transform: scale(1.1);
+}
+
+/* Sin estado "activo": el navbar no se dibuja dentro del módulo (la ruta usa
+   layout completo), así que este enlace nunca puede estar en su propia sección. */
 
 /* Estilos unificados para ambos iconos */
 .profile-icon {

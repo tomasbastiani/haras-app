@@ -8,11 +8,17 @@ const admin = ref(localStorage.getItem('admin'))
 // localStorage igual que `admin` porque el guard del router corre antes de que
 // haya cualquier request al backend.
 const paqueteria = ref(localStorage.getItem('paqueteria'))
+// Acceso a la mensajería interna (chat del personal). Igual que los de arriba:
+// vive en localStorage porque el guard del router corre antes de cualquier
+// request. Es UX —mostrar el ítem del menú y no dejar entrar por URL a quien no
+// corresponde—, NO el permiso: eso lo chequea el middleware `mensajeria` del
+// backend en cada endpoint, así que este flag congelado no habilita nada.
+const mensajeria = ref(localStorage.getItem('mensajeria'))
 
 // Sesión persistente estilo app mobile: el usuario queda logueado hasta que
 // cierra sesión manualmente o el backend rechaza el token/cookie (401).
 export function useAuth() {
-  const login = (userEmail, isAdmin, mustChangePassword = false, name = '', token = '', esPaqueteria = false) => {
+  const login = (userEmail, isAdmin, mustChangePassword = false, name = '', token = '', esPaqueteria = false, accesoMensajeria = false) => {
     localStorage.setItem('user', userEmail)
 
     if (token) {
@@ -48,6 +54,14 @@ export function useAuth() {
       paqueteria.value = null
     }
 
+    if (accesoMensajeria) {
+      localStorage.setItem('mensajeria', '1')
+      mensajeria.value = '1'
+    } else {
+      localStorage.removeItem('mensajeria')
+      mensajeria.value = null
+    }
+
     user.value = userEmail
   }
 
@@ -64,12 +78,14 @@ export function useAuth() {
     localStorage.removeItem('userName')
     localStorage.removeItem('admin')
     localStorage.removeItem('paqueteria')
+    localStorage.removeItem('mensajeria')
     localStorage.removeItem('mustChangePassword')
     localStorage.removeItem('token')
     user.value = null
     userName.value = null
     admin.value = null
     paqueteria.value = null
+    mensajeria.value = null
     router.push('/login')
   }
 
@@ -78,6 +94,27 @@ export function useAuth() {
   // Cuenta de portería. Un admin nunca lo es (el backend lo impide al asignarlo),
   // así que los dos roles no se pisan.
   const isPaqueteria = () => !!paqueteria.value
+  // Acceso a la mensajería interna. Los admin también lo tienen (supervisan
+  // grupos), así que esto no implica estar en el directorio del módulo: eso lo
+  // responde /mensajeria/bootstrap con `yo.miembro`.
+  const tieneMensajeria = () => !!mensajeria.value
+
+  /**
+   * Sincroniza el flag de mensajería con lo que dice el backend.
+   *
+   * Hace falta porque la sesión no expira: si el acceso se otorga (o se quita)
+   * después del login, el flag guardado quedaría desactualizado para siempre. Lo
+   * llama useMenuItems al armar el menú, con /mensajeria/acceso.
+   */
+  const setMensajeria = (tiene) => {
+    if (tiene) {
+      localStorage.setItem('mensajeria', '1')
+      mensajeria.value = '1'
+    } else {
+      localStorage.removeItem('mensajeria')
+      mensajeria.value = null
+    }
+  }
 
   return {
     user,
@@ -86,6 +123,8 @@ export function useAuth() {
     logout,
     isLoggedIn,
     isAdmin,
-    isPaqueteria
+    isPaqueteria,
+    tieneMensajeria,
+    setMensajeria
   }
 }

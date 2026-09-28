@@ -74,10 +74,13 @@ const handleLogin = async () => {
     // Cuenta dedicada de portería: el login ya devuelve el usuario entero, así
     // que el flag viaja acá y no hace falta un request extra.
     const esPaqueteria = !!response.data.user.paqueteria
+    // Acceso al chat interno del personal. Viene del login para no pagar un
+    // request extra; el permiso real lo revalida el backend en cada endpoint.
+    const accesoMensajeria = response.data.mensajeria === true
     const mustChangePassword = response.data.must_change_password === true
     const token = response.data.token
 
-    login(userEmail, admin, mustChangePassword, userName, token, esPaqueteria)
+    login(userEmail, admin, mustChangePassword, userName, token, esPaqueteria, accesoMensajeria)
 
     // Solicitar permisos FCM en segundo plano sin interrumpir la navegacion
     requestPushNotificationPermission()
