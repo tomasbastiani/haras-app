@@ -76,10 +76,26 @@ export const listenForegroundMessages = () => {
 };
 
 const dispatchPushEvent = (payload) => {
-  const event = new CustomEvent('push-notification', { 
+  // FcmService manda los pushes como "data-only": arma message.data y nunca
+  // message.notification. O sea que `payload.notification` viene undefined, y
+  // leerlo directo tiraba un TypeError acá adentro: cada push que llegaba con la
+  // app abierta rompía en esta línea y el snackbar no aparecía nunca. Se notaba
+  // poco porque la notificación del sistema (la que se ve con la app cerrada) la
+  // dibuja el service worker, que sí lee payload.data.
+  //
+  // Afecta a todos los módulos que mandan push, no sólo a la mensajería.
+  // Se deja el fallback a `notification` por si alguna vez se manda de las dos
+  // formas.
+  const datos = payload?.data || {};
+  const notif = payload?.notification || {};
+
+  const event = new CustomEvent('push-notification', {
     detail: {
-      title: payload.notification.title,
-      body: payload.notification.body
+      title: datos.title || notif.title || 'Haras Santa María',
+      body: datos.body || notif.body || '',
+      url: datos.url || null,
+      // Lo usa App.vue para decidir si el aviso va al historial de la campana.
+      tipo: datos.tipo || null,
     }
   });
   window.dispatchEvent(event);

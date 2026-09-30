@@ -80,7 +80,14 @@ onMounted(() => {
     snackbar.title = event.detail.title;
     snackbar.body = event.detail.body;
     snackbar.show = true;
-    
+
+    // Los avisos del chat no van al historial de la campana: la mensajería no
+    // escribe en UserNotification a propósito (generaría mucho más volumen que
+    // paquetes, reclamos y turnos, y los taparía). Agregarlos acá metería una
+    // entrada que no existe en el servidor: inflaría el contador y desaparecería
+    // al recargar. El chat ya tiene su propio badge de no leídos.
+    if (event.detail.tipo === 'mensajeria') return;
+
     // Lo agregamos al historial en tiempo real
     addNotification(event.detail);
   });

@@ -464,6 +464,14 @@ async function quitar(m) {
     direcciones y deja el composer escondido abajo de la pantalla. Se deja vh
     como fallback para los que no soportan dvh.
   */
+  /*
+    Le avisa al navegador que este subárbol es oscuro. Sin esto, en un celular
+    con el sistema en modo oscuro los controles nativos (el cursor de texto, la
+    X de los campos de búsqueda, las barras de scroll) se dibujan asumiendo
+    fondo claro y quedan invisibles sobre el nuestro.
+  */
+  color-scheme: dark;
+
   height: 100vh;
   height: 100dvh;
   background: var(--m-fondo);
@@ -784,5 +792,40 @@ async function quitar(m) {
 
 .icono--peligro:hover {
   color: var(--m-error);
+}
+</style>
+
+<!--
+  Este bloque va SIN scoped a propósito, y es el único del módulo.
+
+  App.vue tiene una regla global para pantallas de hasta 480px que fuerza
+  `color: #111 !important` sobre todo input, textarea y select del portal. Está
+  bien para las pantallas claras, pero acá el fondo es oscuro: el resultado era
+  texto negro sobre negro, o sea escribir a ciegas en el celular. Y como el
+  `background-color: #ffffff` de esa regla NO lleva !important, nuestro fondo
+  oscuro seguía ganando; si no, al menos se habría visto.
+
+  Va sin scoped porque tiene que alcanzar a los cuatro campos del módulo (el
+  composer, el buscador del sidebar, el editor de un mensaje y los diálogos) sin
+  repetir la corrección en cada componente. No se escapa del módulo: todo cuelga
+  de `.mens`, que existe únicamente acá.
+
+  El !important es necesario para ganarle a otro !important. Estos selectores
+  tienen más especificidad (clase + elemento contra elemento solo), así que ganan.
+-->
+<style>
+.mens input,
+.mens textarea,
+.mens select {
+  color: var(--m-texto) !important;
+  /* iOS puede ignorar `color` en campos de formulario y usar este. */
+  -webkit-text-fill-color: var(--m-texto);
+  caret-color: var(--m-acento) !important;
+}
+
+.mens input::placeholder,
+.mens textarea::placeholder {
+  color: var(--m-texto-debil) !important;
+  opacity: 1;
 }
 </style>
