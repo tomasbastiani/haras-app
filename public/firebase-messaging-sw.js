@@ -37,7 +37,11 @@ messaging.onBackgroundMessage((payload) => {
   const notificationOptions = {
     body: payload.data.body || "",
     icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-192x192.png',
+    // Android pinta el badge (ícono de la barra de estado) usando SÓLO el canal
+    // alfa: todo píxel no transparente sale blanco. El icon-192 es un JPEG
+    // cuadrado sin transparencia, y por eso se veía un cuadrado blanco. Este es
+    // la silueta del árbol en blanco sobre fondo transparente.
+    badge: '/icons/badge-96x96.png',
     data: {
       url: payload.data.url || 'https://harassantamaria.com.ar/login'
     },
