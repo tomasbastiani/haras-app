@@ -17,6 +17,17 @@
     </div>
     <div v-if="errorMessage" class="alert alert-error">
       {{ errorMessage }}
+      <div v-if="mailDuplicado" style="margin-top: 8px;">
+        <button type="button" class="btn-success" :disabled="isSending" @click="handleSend(true)">
+          Reenviar igual
+        </button>
+      </div>
+    </div>
+
+    <!-- Progreso: los mails salen de a tandas, cada minuto -->
+    <div v-if="envio" class="alert alert-success">
+      {{ progreso }}
+      <span v-if="!envio.finalizado">Podés salir de esta pantalla: el envío sigue solo.</span>
     </div>
 
     <!-- Contenido principal -->
@@ -153,7 +164,7 @@
             type="button"
             class="btn-success"
             :disabled="isSending || !canSend"
-            @click="handleSend"
+            @click="handleSend(false)"
           >
             <span v-if="isSending" class="spinner"></span>
             <span v-else>Enviar correo</span>
@@ -168,8 +179,11 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '@/axios';
+import { useEnvioMasivo } from '@/composables/useEnvioMasivo';
 
 const router = useRouter();
+const { envio, seguir, limpiar, progreso } = useEnvioMasivo();
+const mailDuplicado = ref(false);
 const goBack = () => router.push('/menu');
 
 // Estado principal
@@ -314,30 +328,44 @@ const processBulkEmails = () => {
   // bulkEmailsText.value = '';
 };
 
-// Enviar al backend
-const handleSend = async () => {
+// Encola el mail en el backend: los mails salen de a tandas cada minuto y acá
+// se muestra el progreso. El mismo mail a los mismos destinatarios no se
+// encola dos veces (409); "Reenviar igual" lo fuerza.
+const handleSend = async (forzar = false) => {
   if (!canSend.value) {
     errorMessage.value = 'Completá al menos un destinatario, asunto y cuerpo del mensaje.';
     successMessage.value = '';
+    return;
+  }
+  if (forzar && !confirm('Este mismo mail ya se envió a estos destinatarios. ¿Reenviarlo igual?')) {
     return;
   }
 
   isSending.value = true;
   successMessage.value = '';
   errorMessage.value = '';
+  mailDuplicado.value = false;
+  limpiar();
 
   try {
-    await axios.post('/admin/enviar-mail-personalizado', {
+    const { data } = await axios.post('/admin/enviar-mail-personalizado', {
       emails: emails.value,
       subject: subject.value,
       body: body.value,
+      ...(forzar ? { forzar: true } : {}),
     });
 
-    successMessage.value = `Correo enviado con éxito a ${emails.value.length} destinatario(s).`;
-    errorMessage.value = '';
+    successMessage.value = data.message;
+    seguir(data.envio);
   } catch (error) {
     console.error('Error al enviar correo personalizado:', error);
-    errorMessage.value = 'Ocurrió un error al enviar el correo. Intente nuevamente.';
+    if (error.response?.status === 409) {
+      errorMessage.value = error.response.data.message;
+      mailDuplicado.value = true;
+      seguir(error.response.data.envio);
+    } else {
+      errorMessage.value = error.response?.data?.message || 'Ocurrió un error al encolar el correo. Intente nuevamente.';
+    }
     successMessage.value = '';
   } finally {
     isSending.value = false;

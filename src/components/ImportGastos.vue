@@ -28,6 +28,13 @@
         </div>
 
         <div class="filter-item button-item">
+          <button class="template-button" :disabled="descargandoPlantilla" @click="descargarPlantilla">
+            <span v-if="descargandoPlantilla" class="spinner"></span>
+            Descargar plantilla
+          </button>
+        </div>
+
+        <div class="filter-item button-item">
           <button class="import-button" @click="abrirModal">
             Importar Excel
           </button>
@@ -43,16 +50,36 @@
             <th>Email</th>
             <th>Nombre</th>
             <th>Número de Lote</th>
+            <th>CVU</th>
+            <th>Alias</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in datosFiltrados" :key="item.email + item.nlote">
+          <tr v-for="item in datosPagina" :key="item.id">
             <td>{{ item.email }}</td>
             <td>{{ item.nombre }}</td>
             <td>{{ item.nlote }}</td>
+            <td class="mono">{{ item.cvu || '—' }}</td>
+            <td>{{ item.alias || '—' }}</td>
+          </tr>
+          <tr v-if="datosFiltrados.length === 0">
+            <td colspan="5" class="sin-datos">Sin registros</td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- PAGINADO -->
+    <div v-if="totalPaginas > 1" class="paginado">
+      <v-pagination
+        v-model="pagina"
+        :length="totalPaginas"
+        :total-visible="7"
+        density="comfortable"
+      />
+    </div>
+    <div class="total-registros">
+      {{ datosFiltrados.length }} registro(s)
     </div>
 
     <!-- MODAL -->
@@ -71,8 +98,18 @@
             Archivo seleccionado: {{ fileName }}
           </div>
 
+          <div class="formato-ayuda">
+            Columnas: A Email · B Nombre · C Lote · D CVU · E Alias.
+            La primera fila es el encabezado. CVU y Alias son opcionales.
+            Usá la <strong>plantilla</strong> (botón "Descargar plantilla"): ya trae
+            el CVU formateado como Texto. Si no, Excel redondea los últimos dígitos.
+          </div>
+
           <div v-if="mensajeError" class="error-message">
             {{ mensajeError }}
+            <ul v-if="erroresImport.length" class="errores-lista">
+              <li v-for="(err, i) in erroresImport" :key="i">{{ err }}</li>
+            </ul>
           </div>
 
           <div v-if="mensajeExito" class="success-message">
@@ -111,7 +148,18 @@ export default {
       isImporting: false,
       mensajeError: "",
       mensajeExito: "",
+      erroresImport: [],
+      descargandoPlantilla: false,
+      pagina: 1,
+      porPagina: 20,
     };
+  },
+
+  watch: {
+    // Al filtrar, volver a la primera página: si no, se puede quedar parado en
+    // una página que ya no existe y ver la tabla vacía.
+    filtroEmail() { this.pagina = 1; },
+    filtroLote() { this.pagina = 1; },
   },
 
   mounted() {
@@ -130,6 +178,15 @@ export default {
         return matchEmail && matchLote;
       });
     },
+
+    totalPaginas() {
+      return Math.max(1, Math.ceil(this.datosFiltrados.length / this.porPagina));
+    },
+
+    datosPagina() {
+      const inicio = (this.pagina - 1) * this.porPagina;
+      return this.datosFiltrados.slice(inicio, inicio + this.porPagina);
+    },
   },
 
   methods: {
@@ -140,6 +197,29 @@ export default {
         this.datos = response.data;
       } catch (error) {
         console.error("Error cargando gastos:", error);
+      }
+    },
+
+    // Va por axios (con el token) y no por un <a href>, porque el endpoint es
+    // sólo admin y un link directo no manda el bearer.
+    async descargarPlantilla() {
+      this.descargandoPlantilla = true;
+      try {
+        const response = await axios.get("/importar-gastos/plantilla", {
+          responseType: "blob",
+        });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(response.data);
+        link.download = "plantilla-gastos-comunes.xlsx";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(link.href);
+      } catch (error) {
+        console.error("Error descargando plantilla:", error);
+        alert("No se pudo descargar la plantilla. Intentá de nuevo.");
+      } finally {
+        this.descargandoPlantilla = false;
       }
     },
 
@@ -174,6 +254,7 @@ export default {
       this.showModal = false;
       this.mensajeError = "";
       this.mensajeExito = "";
+      this.erroresImport = [];
     },
 
     async importarExcel() {
@@ -181,6 +262,7 @@ export default {
         this.isImporting = true;
         this.mensajeError = "";
         this.mensajeExito = "";
+        this.erroresImport = [];
 
         const formData = new FormData();
         formData.append("file", this.archivo);
@@ -200,6 +282,7 @@ export default {
         // 🔥 en vez de usar response.data.data
         // volvemos a pedir la tabla actualizada
         await this.cargarDatos();
+        this.pagina = 1;
 
         setTimeout(() => {
           this.cancelarImportacion();
@@ -208,6 +291,7 @@ export default {
       } catch (error) {
         this.mensajeError =
           error.response?.data?.message || "Error al importar";
+        this.erroresImport = error.response?.data?.errores || [];
       } finally {
         this.isImporting = false;
       }
@@ -324,6 +408,28 @@ h2 {
   transition: 0.2s;
 }
 
+.template-button {
+  padding: 9px 16px;
+  background-color: #fff;
+  color: #333;
+  border: 2px solid #ffd100;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-top: 25px;
+  width: 70%;
+  transition: 0.2s;
+}
+
+.template-button:hover:not(:disabled) {
+  background-color: #fff7cc;
+}
+
+.template-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .import-button:hover {
   background-color: #5a6268;
   color: white;
@@ -353,7 +459,46 @@ h2 {
   font-weight: bold;
 }
 
+.facturas-table td.mono {
+  font-family: Consolas, 'Courier New', monospace;
+  white-space: nowrap;
+}
+
+.sin-datos {
+  color: #888;
+  font-style: italic;
+}
+
+/* PAGINADO */
+.paginado {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.total-registros {
+  text-align: center;
+  color: #666;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
 /* MODAL */
+.formato-ayuda {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.errores-lista {
+  margin: 8px 0 0 18px;
+  font-weight: normal;
+  font-size: 13px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
 .selected-file {
   margin-top: 15px;
   font-weight: bold;

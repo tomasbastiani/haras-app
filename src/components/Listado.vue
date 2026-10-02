@@ -118,7 +118,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '@/axios';
 import editIcon from '@/assets/img/editar.png';
@@ -146,32 +146,56 @@ const successMessage = ref('');
 const errorMessage = ref('');
 
 const currentPage = ref(1);
+const totalPages = ref(1);
 const rowsPerPage = 20;
+const periodosUnicos = ref([]);
 
+// El backend pagina y filtra: la tabla es demasiado grande para traerla entera.
+let ultimoPedido = 0;
 const fetchAdminFacturas = async () => {
+  const pedido = ++ultimoPedido;
+  isLoading.value = true;
   try {
-    const response = await axios.get('/facturas-todas');
-    adminFacturas.value = response.data;
+    const response = await axios.get('/facturas-todas', {
+      params: {
+        page: currentPage.value,
+        per_page: rowsPerPage,
+        periodo: selectedPeriodoAdmin.value || undefined,
+        email: filtroEmail.value.trim() || undefined,
+        lote: filtroLote.value.trim() || undefined,
+        carta: filtroCarta.value.trim() || undefined,
+        gastocomun: filtroLiquidacion.value.trim() || undefined,
+      },
+    });
+    // Descarta respuestas viejas si el usuario siguió escribiendo.
+    if (pedido !== ultimoPedido) return;
+    adminFacturas.value = response.data.data;
+    totalPages.value = Math.max(1, response.data.last_page);
   } catch (error) {
     console.error('Error al obtener las facturas del admin:', error);
   } finally {
-    isLoading.value = false;
+    if (pedido === ultimoPedido) isLoading.value = false;
   }
 };
 
-const periodosUnicos = computed(() => {
-  const numeros = adminFacturas.value.map(f => f.numero);
-  return [...new Set(numeros)].sort((a, b) => b - a);
-});
+const fetchPeriodos = async () => {
+  try {
+    const response = await axios.get('/gastos/periodos');
+    periodosUnicos.value = response.data.map(p => p.numero);
+  } catch (error) {
+    console.error('Error al obtener los períodos:', error);
+  }
+};
 
-const filteredAdminFacturas = computed(() => {
-  return adminFacturas.value.filter(f =>
-    (selectedPeriodoAdmin.value === '' || f.numero === selectedPeriodoAdmin.value) &&
-    (filtroEmail.value === '' || f.email.toLowerCase().includes(filtroEmail.value.toLowerCase())) &&
-    (filtroLote.value === '' || f.nlote.toLowerCase().includes(filtroLote.value.toLowerCase())) &&
-    (filtroCarta.value === '' || f.carta.toLowerCase().includes(filtroCarta.value.toLowerCase())) &&
-    (filtroLiquidacion.value === '' || f.gastocomun.toLowerCase().includes(filtroLiquidacion.value.toLowerCase()))
-  );
+const paginatedFacturas = computed(() => adminFacturas.value);
+
+let debounce = null;
+watch([selectedPeriodoAdmin, filtroEmail, filtroLote, filtroCarta, filtroLiquidacion], () => {
+  clearTimeout(debounce);
+  debounce = setTimeout(() => {
+    currentPage.value = 1;
+    fetchAdminFacturas();
+  }, 350);
 });
 
 const limpiarFiltros = () => {
@@ -182,21 +206,18 @@ const limpiarFiltros = () => {
   filtroLiquidacion.value = '';
 };
 
-const totalPages = computed(() =>
-  Math.ceil(filteredAdminFacturas.value.length / rowsPerPage)
-);
-
-const paginatedFacturas = computed(() => {
-  const start = (currentPage.value - 1) * rowsPerPage;
-  return filteredAdminFacturas.value.slice(start, start + rowsPerPage);
-});
-
 const nextPage = () => {
-  if (currentPage.value < totalPages.value) currentPage.value++;
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++;
+    fetchAdminFacturas();
+  }
 };
 
 const prevPage = () => {
-  if (currentPage.value > 1) currentPage.value--;
+  if (currentPage.value > 1) {
+    currentPage.value--;
+    fetchAdminFacturas();
+  }
 };
 
 const editarFactura = (factura) => {
@@ -232,7 +253,10 @@ const guardarEdicionFactura = async () => {
   }
 };
 
-onMounted(fetchAdminFacturas);
+onMounted(() => {
+  fetchAdminFacturas();
+  fetchPeriodos();
+});
 </script>
 
 <style scoped>

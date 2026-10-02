@@ -52,8 +52,9 @@
 
         <div class="modal-buttons">
           <button
+            v-if="!envioMail"
             :disabled="isSendingMail"
-            @click="confirmarEnvioMail"
+            @click="confirmarEnvioMail(false)"
             class="confirm-button"
           >
             <span v-if="isSendingMail" class="spinner"></span>
@@ -65,20 +66,30 @@
             class="cancel-button"
             :disabled="isSendingMail"
           >
-            No
+            {{ envioMail ? 'Cerrar' : 'No' }}
           </button>
         </div>
-
-        <!-- Texto mientras se envían los mails -->
-        <p v-if="isSendingMail" class="info-message">
-          Se están enviando los avisos por mail. Esto puede demorar unos segundos...
-        </p>
 
         <div v-if="mailSuccessMessage" class="success-message">
           {{ mailSuccessMessage }}
         </div>
         <div v-if="mailErrorMessage" class="error-message">
           {{ mailErrorMessage }}
+        </div>
+
+        <!-- Progreso: los mails salen de a tandas, cada minuto -->
+        <p v-if="envioMail" class="info-message">
+          {{ progresoMail }}
+          <span v-if="!envioMail.finalizado">
+            Podés cerrar esta ventana: el envío sigue solo.
+          </span>
+        </p>
+
+        <!-- Ya existía un aviso para este período -->
+        <div v-if="avisoDuplicado" class="modal-buttons">
+          <button class="confirm-button" :disabled="isSendingMail" @click="confirmarEnvioMail(true)">
+            Reenviar igual
+          </button>
         </div>
       </div>
     </div>
@@ -222,6 +233,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '@/axios';
 import plusIcon from '@/assets/img/plus.png';
+import { useEnvioMasivo } from '@/composables/useEnvioMasivo';
 
 const router = useRouter();
 const isLoading = ref(true);
@@ -381,41 +393,50 @@ const showMailConfirmModal = ref(false)
 const isSendingMail = ref(false)
 const mailSuccessMessage = ref('')
 const mailErrorMessage = ref('')
+const avisoDuplicado = ref(false)
+const { envio: envioMail, seguir: seguirEnvioMail, limpiar: limpiarEnvioMail, progreso: progresoMail } = useEnvioMasivo()
 
 const openMailConfirmModal = () => {
   mailSuccessMessage.value = ''
   mailErrorMessage.value = ''
+  avisoDuplicado.value = false
+  limpiarEnvioMail()
   showMailConfirmModal.value = true
 }
 
-// cerrar modal sin hacer nada
+// cerrar modal (el envío, si arrancó, sigue en el servidor)
 const cancelarEnvioMail = () => {
   showMailConfirmModal.value = false
+  limpiarEnvioMail()
 }
 
-// confirmar y llamar al backend
-const confirmarEnvioMail = async () => {
+// Encola el aviso. El backend no manda acá: los mails salen de a tandas cada
+// minuto, y el modal muestra el progreso. Un aviso por período: si ya existe,
+// responde 409 y se ofrece "Reenviar igual" (forzar).
+const confirmarEnvioMail = async (forzar = false) => {
+  if (forzar && !confirm('Este aviso ya se envió para este período. ¿Reenviarlo a todos igual?')) {
+    return
+  }
   try {
     isSendingMail.value = true
     mailSuccessMessage.value = ''
     mailErrorMessage.value = ''
+    avisoDuplicado.value = false
 
-    await axios.post('/gastos/notificar', {
-      is_admin: isAdmin.value,
-      // periodo: selectedPeriodoAdmin.value ?? null
-    })
+    // El backend decide si es admin desde el token, no desde el body.
+    const { data } = await axios.post('/gastos/notificar', forzar ? { forzar: true } : {})
 
-    mailSuccessMessage.value = 'Los avisos fueron enviados por mail correctamente.'
-
-    // Opcional: pequeño delay para que el usuario llegue a ver el mensaje
-    // y luego cerrar el modal. Si no querés delay, podés cerrar directo.
-    setTimeout(() => {
-      showMailConfirmModal.value = false
-      mailSuccessMessage.value = ''
-    }, 800)
+    mailSuccessMessage.value = data.message
+    seguirEnvioMail(data.envio)
   } catch (error) {
     console.error(error)
-    mailErrorMessage.value = 'Hubo un error al enviar los avisos. Por favor, intente nuevamente.'
+    if (error.response?.status === 409) {
+      mailErrorMessage.value = error.response.data.message
+      avisoDuplicado.value = true
+      seguirEnvioMail(error.response.data.envio)
+    } else {
+      mailErrorMessage.value = error.response?.data?.message || 'Hubo un error al encolar los avisos. Por favor, intente nuevamente.'
+    }
   } finally {
     isSendingMail.value = false
   }
