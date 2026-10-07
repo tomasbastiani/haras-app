@@ -17,17 +17,26 @@
     </div>
     <div v-if="errorMessage" class="alert alert-error">
       {{ errorMessage }}
-      <div v-if="mailDuplicado" style="margin-top: 8px;">
-        <button type="button" class="btn-success" :disabled="isSending" @click="handleSend(true)">
-          Reenviar igual
-        </button>
-      </div>
     </div>
 
     <!-- Progreso: los mails salen de a tandas, cada minuto -->
     <div v-if="envio" class="alert alert-success">
       {{ progreso }}
-      <span v-if="!envio.finalizado">Podés salir de esta pantalla: el envío sigue solo.</span>
+      <span v-if="envio.estado === 'en_curso'">Podés salir de esta pantalla: el envío sigue solo.</span>
+      <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button v-if="envio.estado === 'en_curso'" type="button" class="btn-success" :disabled="ejecutando" @click="accion('pausar')">
+          Pausar
+        </button>
+        <button v-if="envio.estado === 'pausado'" type="button" class="btn-success" :disabled="ejecutando" @click="accion('reanudar')">
+          Reanudar
+        </button>
+        <button v-if="envio.estado !== 'finalizado'" type="button" class="btn-success" :disabled="ejecutando" @click="accion('cancelar')">
+          Cancelar envío
+        </button>
+        <button v-if="envio.estado === 'finalizado'" type="button" class="btn-success" :disabled="isSending" @click="handleSend(true)">
+          Reenviar a quienes no lo recibieron
+        </button>
+      </div>
     </div>
 
     <!-- Contenido principal -->
@@ -182,8 +191,7 @@ import axios from '@/axios';
 import { useEnvioMasivo } from '@/composables/useEnvioMasivo';
 
 const router = useRouter();
-const { envio, seguir, limpiar, progreso } = useEnvioMasivo();
-const mailDuplicado = ref(false);
+const { envio, seguir, limpiar, progreso, accion, ejecutando } = useEnvioMasivo();
 const goBack = () => router.push('/menu');
 
 // Estado principal
@@ -329,22 +337,22 @@ const processBulkEmails = () => {
 };
 
 // Encola el mail en el backend: los mails salen de a tandas cada minuto y acá
-// se muestra el progreso. El mismo mail a los mismos destinatarios no se
-// encola dos veces (409); "Reenviar igual" lo fuerza.
+// se muestra el progreso, con pausar/cancelar. El mismo mail a los mismos
+// destinatarios no se encola dos veces (409); "Reenviar" manda sólo a quienes
+// todavía no lo recibieron.
 const handleSend = async (forzar = false) => {
   if (!canSend.value) {
     errorMessage.value = 'Completá al menos un destinatario, asunto y cuerpo del mensaje.';
     successMessage.value = '';
     return;
   }
-  if (forzar && !confirm('Este mismo mail ya se envió a estos destinatarios. ¿Reenviarlo igual?')) {
+  if (forzar && !confirm('Se va a enviar sólo a quienes todavía no recibieron este mail. ¿Continuar?')) {
     return;
   }
 
   isSending.value = true;
   successMessage.value = '';
   errorMessage.value = '';
-  mailDuplicado.value = false;
   limpiar();
 
   try {
@@ -361,7 +369,6 @@ const handleSend = async (forzar = false) => {
     console.error('Error al enviar correo personalizado:', error);
     if (error.response?.status === 409) {
       errorMessage.value = error.response.data.message;
-      mailDuplicado.value = true;
       seguir(error.response.data.envio);
     } else {
       errorMessage.value = error.response?.data?.message || 'Ocurrió un error al encolar el correo. Intente nuevamente.';

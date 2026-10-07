@@ -80,15 +80,28 @@
         <!-- Progreso: los mails salen de a tandas, cada minuto -->
         <p v-if="envioMail" class="info-message">
           {{ progresoMail }}
-          <span v-if="!envioMail.finalizado">
+          <span v-if="envioMail.estado === 'en_curso'">
             Podés cerrar esta ventana: el envío sigue solo.
           </span>
         </p>
 
-        <!-- Ya existía un aviso para este período -->
-        <div v-if="avisoDuplicado" class="modal-buttons">
+        <!-- Control del envío en curso -->
+        <div v-if="envioMail && envioMail.estado !== 'finalizado'" class="modal-buttons">
+          <button v-if="envioMail.estado === 'en_curso'" class="cancel-button" :disabled="ejecutandoAccionMail" @click="accionEnvioMail('pausar')">
+            Pausar
+          </button>
+          <button v-if="envioMail.estado === 'pausado'" class="confirm-button" :disabled="ejecutandoAccionMail" @click="accionEnvioMail('reanudar')">
+            Reanudar
+          </button>
+          <button class="cancel-button" :disabled="ejecutandoAccionMail" @click="accionEnvioMail('cancelar')">
+            Cancelar envío
+          </button>
+        </div>
+
+        <!-- Ya terminó: se puede reenviar sólo a quienes no lo recibieron -->
+        <div v-if="envioMail && envioMail.estado === 'finalizado'" class="modal-buttons">
           <button class="confirm-button" :disabled="isSendingMail" @click="confirmarEnvioMail(true)">
-            Reenviar igual
+            Reenviar a quienes no lo recibieron
           </button>
         </div>
       </div>
@@ -393,13 +406,18 @@ const showMailConfirmModal = ref(false)
 const isSendingMail = ref(false)
 const mailSuccessMessage = ref('')
 const mailErrorMessage = ref('')
-const avisoDuplicado = ref(false)
-const { envio: envioMail, seguir: seguirEnvioMail, limpiar: limpiarEnvioMail, progreso: progresoMail } = useEnvioMasivo()
+const {
+  envio: envioMail,
+  seguir: seguirEnvioMail,
+  limpiar: limpiarEnvioMail,
+  progreso: progresoMail,
+  accion: accionEnvioMail,
+  ejecutando: ejecutandoAccionMail,
+} = useEnvioMasivo()
 
 const openMailConfirmModal = () => {
   mailSuccessMessage.value = ''
   mailErrorMessage.value = ''
-  avisoDuplicado.value = false
   limpiarEnvioMail()
   showMailConfirmModal.value = true
 }
@@ -411,17 +429,17 @@ const cancelarEnvioMail = () => {
 }
 
 // Encola el aviso. El backend no manda acá: los mails salen de a tandas cada
-// minuto, y el modal muestra el progreso. Un aviso por período: si ya existe,
-// responde 409 y se ofrece "Reenviar igual" (forzar).
+// minuto, y el modal muestra el progreso y deja pausar/cancelar. Un aviso por
+// período: si ya existe responde 409 con ese envío, y "Reenviar" (forzar)
+// manda sólo a quienes todavía no lo recibieron.
 const confirmarEnvioMail = async (forzar = false) => {
-  if (forzar && !confirm('Este aviso ya se envió para este período. ¿Reenviarlo a todos igual?')) {
+  if (forzar && !confirm('Se va a enviar el aviso sólo a quienes todavía no lo recibieron en este período (por ejemplo, los que se agregaron o corrigieron en el último import). ¿Continuar?')) {
     return
   }
   try {
     isSendingMail.value = true
     mailSuccessMessage.value = ''
     mailErrorMessage.value = ''
-    avisoDuplicado.value = false
 
     // El backend decide si es admin desde el token, no desde el body.
     const { data } = await axios.post('/gastos/notificar', forzar ? { forzar: true } : {})
@@ -432,7 +450,6 @@ const confirmarEnvioMail = async (forzar = false) => {
     console.error(error)
     if (error.response?.status === 409) {
       mailErrorMessage.value = error.response.data.message
-      avisoDuplicado.value = true
       seguirEnvioMail(error.response.data.envio)
     } else {
       mailErrorMessage.value = error.response?.data?.message || 'Hubo un error al encolar los avisos. Por favor, intente nuevamente.'
