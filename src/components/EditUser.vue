@@ -175,26 +175,36 @@ const guardarEdicionFactura = async () => {
 };
 
 const registrarNuevoUsuario = async () => {
-  isSaving.value = true;
   mensajeExito.value = '';
   mensajeError.value = '';
+
+  // Mismas reglas que valida el backend en /create-user.
+  const password = nuevoUsuario.value.password || '';
+  if (password.length < 8 || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+    mensajeError.value = 'La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.';
+    return;
+  }
+
+  isSaving.value = true;
 
   try {
     await axios.post('/create-user', nuevoUsuario.value);
     mensajeExito.value = 'Usuario registrado exitosamente';
+    // Se recarga sólo si salió bien: antes el reload iba en el finally y
+    // borraba el mensaje de error antes de que se pudiera leer.
     setTimeout(() => {
       showEditModal.value = false;
       mensajeExito.value = '';
+      window.location.reload();
     }, 2000);
   } catch (error) {
-    if (error.response?.data?.message?.includes('at least 4 characters')) {
-      mensajeError.value = 'La contraseña debe tener al menos 4 caracteres';
+    if (error.response?.data?.errors?.password) {
+      mensajeError.value = 'La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.';
     } else {
-      mensajeError.value = 'Ocurrió un error al registrar el usuario.';
+      mensajeError.value = error.response?.data?.message || 'Ocurrió un error al registrar el usuario.';
     }
   } finally {
     isSaving.value = false;
-    window.location.reload();
   }
 };
 

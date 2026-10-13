@@ -148,6 +148,7 @@ export function useMenuItems() {
           { fullTitle: 'Enviar Email', icon: 'mdi-email-send-outline', color: NAVY, to: '/send-email' },
           { fullTitle: 'Importador Gastos Comunes', icon: 'mdi-file-import-outline', color: NAVY, to: '/import-gastos' },
           { fullTitle: 'Importador Morosos', icon: 'mdi-file-alert-outline', color: NAVY, to: '/import-morosos' },
+          { fullTitle: 'Asistente Claude', icon: 'mdi-robot-outline', color: NAVY, to: '/asistente-claude' },
           {
             fullTitle: 'Centro de Notificaciones',
             icon: 'mdi-bell-ring-outline',

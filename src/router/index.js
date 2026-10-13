@@ -22,6 +22,7 @@ import PaqueteriaAdmin from '@/components/PaqueteriaAdmin.vue';
 import PaqueteriaUsuarios from '@/components/PaqueteriaUsuarios.vue';
 import Mensajeria from '@/components/mensajeria/Mensajeria.vue';
 import MensajeriaUsuarios from '@/components/MensajeriaUsuarios.vue';
+import AsistenteClaude from '@/components/AsistenteClaude.vue';
 
 const routes = [
   { path: '/', component: Home },
@@ -57,6 +58,7 @@ const routes = [
     meta: { requiresAuth: true, requiresMensajeria: true, layout: 'completo' },
   },
   { path: '/mensajeria-usuarios', component: MensajeriaUsuarios, meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: '/asistente-claude', component: AsistenteClaude, meta: { requiresAuth: true, requiresAdmin: true } },
 ];
 
 // Lo único que puede ver una cuenta de portería. `/menu` entra porque el menú
